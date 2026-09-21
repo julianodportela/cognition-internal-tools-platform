@@ -1,6 +1,8 @@
 // Adapter interfaces for external systems. Mocks are bound in sandbox;
 // real adapters are wired per-environment in later phases. Only platform/
 // code may instantiate adapters.
+import fs from 'fs';
+import path from 'path';
 
 export interface RefundResult {
   refundId: string;
@@ -22,6 +24,8 @@ export interface FlagService {
 export interface StorageAdapter {
   put(key: string, data: Uint8Array, contentType?: string): Promise<{ url: string }>;
   getUrl(key: string): Promise<string>;
+  /** Read the stored bytes back (platform-internal; used by the file route). */
+  read(key: string): Promise<Uint8Array>;
   delete(key: string): Promise<void>;
 }
 
@@ -83,38 +87,45 @@ export function mockFlags(): FlagService {
   };
 }
 
-export function mockStorage(): StorageAdapter {
-  const files = new Map<string, Uint8Array>();
+export function mockStorage(mode: 'sandbox' | 'production' = 'sandbox'): StorageAdapter {
+  const dir = path.join(process.cwd(), '.data', 'files', mode);
+  const safe = (key: string) => path.join(dir, key.replace(/[^a-zA-Z0-9._-]/g, '_'));
   return {
     async put(key, data) {
       await latency();
-      files.set(key, data);
-      return { url: `mockfs:///${key}` };
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(safe(key), data);
+      return { url: `localfs://${mode}/${key}` };
     },
     async getUrl(key) {
       await latency();
-      if (!files.has(key)) fail(`No such file ${key}`);
-      return `mockfs:///${key}`;
+      if (!fs.existsSync(safe(key))) fail(`No such file ${key}`);
+      return `localfs://${mode}/${key}`;
+    },
+    async read(key) {
+      await latency();
+      const p = safe(key);
+      if (!fs.existsSync(p)) fail(`No such file ${key}`);
+      return new Uint8Array(fs.readFileSync(p));
     },
     async delete(key) {
       await latency();
-      files.delete(key);
+      fs.rmSync(safe(key), { force: true });
     },
   };
 }
 
-export function mockIntegrations(): Integrations {
+export function mockIntegrations(mode: 'sandbox' | 'production' = 'sandbox'): Integrations {
   return {
     payments: mockPayments(),
     kyc: mockKyc(),
     flags: mockFlags(),
-    storage: mockStorage(),
+    storage: mockStorage(mode),
   };
 }
 
 export function resolveIntegrations(dataMode: 'sandbox' | 'production'): Integrations {
   // Phase-later: real adapters bound when dataMode === 'production'.
   // For now production also resolves mocks so no real calls are possible.
-  void dataMode;
-  return mockIntegrations();
+  return mockIntegrations(dataMode);
 }

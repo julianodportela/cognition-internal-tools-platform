@@ -1,23 +1,20 @@
 import type { ZodType } from 'zod';
-import type { SeedUser } from '@platform/policy/roles';
+import type { SeedUser, Permission } from '@platform/policy/roles';
 import type { DB } from '@platform/data/client';
 import type { QueryOptions, QueryResult, AggregateOptions } from '@platform/data/query';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { Integrations } from '@platform/integrations';
+import type { RecordsApi } from '@platform/records';
 
-export interface ApprovalPolicy {
-  // Phase 2: dualControl(pred), requiresRole(role), notSelf, etc.
-  kind: 'dualControl' | 'requiresRole' | 'notSelf';
-  role?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  when?: (input: any) => boolean;
-}
+export type ApprovalPolicy =
+  | { kind: 'dualControl'; when?: (input: unknown) => boolean }
+  | { kind: 'requiresRole'; role: string; when?: (input: unknown) => boolean };
 
 export interface ActionCtx {
   user: SeedUser;
-  db: DB; // transaction handle — the only db handle app code receives
   query(table: PgTable, opts?: QueryOptions): Promise<QueryResult>;
   aggregate(table: PgTable, opts?: AggregateOptions): Promise<Record<string, unknown>[]>;
+  records: RecordsApi;
   integrations: Integrations;
   appId: string | null;
   requestId: string;
@@ -33,15 +30,20 @@ export interface ActionCtx {
   };
 }
 
+/** Platform-internal ctx: still exposes the raw tx handle. Never given to app code. */
+export interface InternalActionCtx extends ActionCtx {
+  db: DB;
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface ActionDef<I = any, O = any> {
   id: string;
-  perm: string;
+  perm: Permission;
   input: ZodType<I>;
   risk: 'high' | 'low';
   approval?: ApprovalPolicy;
   idempotency?: (input: I) => string;
-  rateLimit?: { perUser: number; perMinute: number };
+  rateLimit?: { max: number; windowSeconds: number };
   tags?: ('money' | 'external')[];
   appId?: string;
   run(ctx: ActionCtx, input: I): Promise<O>;
@@ -49,12 +51,12 @@ export interface ActionDef<I = any, O = any> {
 
 export interface ActionOpts<I, O> {
   id: string;
-  perm: string;
+  perm: Permission;
   input: ZodType<I>;
   risk?: 'high' | 'low';
   approval?: ApprovalPolicy;
   idempotency?: (input: I) => string;
-  rateLimit?: { perUser: number; perMinute: number };
+  rateLimit?: { max: number; windowSeconds: number };
   tags?: ('money' | 'external')[];
   appId?: string;
   run(ctx: ActionCtx, input: I): Promise<O>;
