@@ -134,12 +134,17 @@ export async function executeAction(
   // dataMode comes from the owning app's manifest — never a silent default.
   const appId = action.appId ?? (rawInput as { appId?: string } | null)?.appId ?? null;
   const app = appId ? getApp(appId) : undefined;
-  if (appId && !app) {
-    return { status: 'failed', code: 'unknown_app', message: `No app ${appId}` };
-  }
   const dataMode: DataMode = opts._forceDataMode ?? app?.dataMode ?? 'sandbox';
   const db = await getDb(dataMode);
   const requestId = randomUUID();
+  if (appId && !app) {
+    await insertAudit(db, {
+      requestId, actorId: user.id, actionId, appId,
+      entity: actionId, entityId: null, before: null, after: null,
+      status: 'failed:unknown_app',
+    });
+    return { status: 'failed', code: 'unknown_app', message: `No app ${appId}` };
+  }
 
   const fail = async (code: string, message: string): Promise<MutateResult> => {
     await insertAudit(db, {
@@ -268,7 +273,8 @@ export async function decideApproval(
     throw new Error('You may not decide this request');
   }
 
-  await db
+  // Atomic claim: only the first decider flips status out of 'pending'.
+  const claimed = await db
     .update(approvalRequests)
     .set({
       status: approved ? 'approved' : 'rejected',
@@ -276,7 +282,9 @@ export async function decideApproval(
       reason: reason ?? null,
       decidedAt: new Date(),
     })
-    .where(eq(approvalRequests.id, requestId));
+    .where(and(eq(approvalRequests.id, requestId), eq(approvalRequests.status, 'pending')))
+    .returning();
+  if (claimed.length === 0) throw new Error(`Request ${requestId} already decided`);
 
   await ctx.audit.record('approval_requests', requestId, { status: 'pending' }, { status: approved ? 'approved' : 'rejected', approverId: ctx.user.id, reason });
   await emit({ type: 'approval.decided', actorId: ctx.user.id, appId: req.appId, actionId: req.actionId, entityId: requestId, payload: { approved } });
@@ -289,6 +297,8 @@ export async function decideApproval(
     (await db.select().from(usersTable).where(eq(usersTable.id, req.requesterId)).limit(1))
       .map((r) => ({ id: r.id, name: r.name, role: r.role as SeedUser['role'], teamId: r.teamId }))[0];
   if (!requester) throw new Error(`Requester ${req.requesterId} no longer exists`);
+  // Roles may have changed since the request was filed — re-check at execution.
+  requirePerm(requester, action.perm);
   const input = JSON.parse(req.inputJson);
   const actionNoApproval = { ...action, approval: undefined };
   const auditCalls: { entity: string; id: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null }[] = [];

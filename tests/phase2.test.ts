@@ -172,6 +172,13 @@ describe('approvals', () => {
     expect((out as { decided: string }).decided).toBe('approved');
   });
 
+  it('double-approve race: second decision on decided request fails', async () => {
+    const res = await executeAction(finance, 'test.issueRefund', { txnId: 't5', amountCents: 60_000 });
+    const requestId = res.status === 'needs_approval' ? res.requestId : '';
+    await decideApproval(decCtx(engAdmin), requestId, true);
+    await expect(decideApproval(decCtx(engAdmin), requestId, true)).rejects.toThrow();
+  });
+
   it('rejected path marks request rejected', async () => {
     const res = await executeAction(finance, 'test.issueRefund', { txnId: 't9', amountCents: 60_000 });
     const requestId = res.status === 'needs_approval' ? res.requestId : '';
