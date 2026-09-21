@@ -1,0 +1,10 @@
+title = "internal-tools gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dev-only defaults, no real secrets"
+paths = [
+  '''dev-secret-do-not-use-in-prod''',
+]

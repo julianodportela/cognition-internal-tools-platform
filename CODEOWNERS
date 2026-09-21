@@ -1,0 +1,8 @@
+# Engineering-owned surfaces. Branch protection must enable
+# "Require review from Code Owners" for these to be enforced.
+platform/ @julianodportela
+app/ @julianodportela
+.github/ @julianodportela
+scripts/ @julianodportela
+promotions/ @julianodportela
+eslint.config.mjs @julianodportela
