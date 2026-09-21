@@ -12,6 +12,12 @@ import { query } from '@platform/data/query';
 import { casesTable } from '../helpers';
 import type { SeedUser } from '@platform/policy/roles';
 
+// Registry now statically loads the template pages → read.ts → auth provider,
+// so the provider must be mocked up-front (doMock can't touch cached modules).
+vi.mock('@platform/auth/provider', () => ({
+  getCurrentUser: async () => senior,
+}));
+
 const senior: SeedUser = { id: 'u-s', name: 'Senior', role: 'senior_reviewer', teamId: 'kyc' };
 
 describe('sandbox/production binding', () => {
@@ -65,9 +71,6 @@ describe('sandbox/production binding', () => {
 
 describe('getReadCtx binding', () => {
   it('sandbox app resolves without production access', async () => {
-    vi.doMock('@platform/auth/provider', () => ({
-      getCurrentUser: async () => senior,
-    }));
     vi.doMock('next/navigation', () => ({ redirect: (p: string) => { throw new Error(`redirect:${p}`); } }));
     const { getReadCtx } = await import('@platform/data/read');
     registerApp({

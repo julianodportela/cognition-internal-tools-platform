@@ -52,7 +52,7 @@ describe('audit completeness', () => {
       if (a.guardSkip) continue;
       let input: unknown;
       try {
-        input = zodFixture(a.input);
+        input = a.guardFixture ? await a.guardFixture({ db }) : zodFixture(a.input);
       } catch {
         failures.push(`${a.id}: cannot generate fixture (add guardSkip: 'reason')`);
         continue;
