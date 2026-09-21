@@ -34,7 +34,6 @@ export function RefundCard(props: Props) {
   const [confirm, setConfirm] = useState<Pending>(null);
   const [banner, setBanner] = useState<{ tone: 'ok' | 'err'; node: ReactNode } | null>(null);
   const [reason, setReason] = useState('');
-  const [rejectReason, setRejectReason] = useState('');
   const [pending, startTransition] = useTransition();
 
   const run = (actionId: string, input: Record<string, unknown>) => {
@@ -66,7 +65,6 @@ export function RefundCard(props: Props) {
   };
 
   const canRequest = props.status === 'settled';
-  const canReject = props.latestRefundId != null && props.latestRefundStatus === 'issued';
 
   return (
     <div className="rounded border p-4">
@@ -127,30 +125,6 @@ export function RefundCard(props: Props) {
             disabled={pending || reason.trim().length === 0}
           >
             Request refund
-          </Button>
-        </div>
-      )}
-
-      {canReject && props.latestRefundId && (
-        <div className="flex items-center gap-2">
-          <input
-            className="flex-1 rounded border px-2 py-1 text-sm"
-            placeholder="Rejection reason (required)"
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-          />
-          <Button
-            variant="danger"
-            onClick={() =>
-              setConfirm({
-                actionId: 'refunds.reject',
-                input: { id: props.latestRefundId, reason: rejectReason },
-                label: 'Reject this refund?',
-              })
-            }
-            disabled={pending || rejectReason.trim().length === 0}
-          >
-            Reject refund
           </Button>
         </div>
       )}

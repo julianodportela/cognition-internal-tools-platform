@@ -1,5 +1,5 @@
 import { uuid, text, integer, timestamp } from 'drizzle-orm/pg-core';
-import { platformTable, sensitive } from '@platform/data/schema-helpers';
+import { platformTable, sensitive, uniqueIndexOn } from '@platform/data/schema-helpers';
 
 // Customer card transactions (read-only for the app) and the refunds issued
 // against them. Emails and card digits are sensitive(): masked everywhere and
@@ -30,6 +30,11 @@ export const refunds = platformTable('refunds', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
     .notNull()
     .defaultNow(),
-});
+}, (t) => [
+  // At most one open refund per transaction — belt-and-braces under the
+  // action-level idempotency key. Declined/failed/refunded-in-full rows are
+  // terminal, so they do not block a later legitimate retry by the platform.
+  uniqueIndexOn(t.transactionId, 'refunds_txn_active_uniq', "status IN ('pending','issued')"),
+]);
 
 export const schema = { transactions, refunds };

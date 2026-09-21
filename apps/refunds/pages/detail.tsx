@@ -18,7 +18,6 @@ export default async function DetailPage({
   const { rows } = await ctx.query(transactions, {
     where: eq(transactions.id, id),
     limit: 1,
-    scope: false,
   });
   const row = rows[0];
   if (!row) notFound();
@@ -27,7 +26,6 @@ export default async function DetailPage({
     ctx.query(refunds, {
       where: and(eq(refunds.transactionId, id)),
       orderBy: { column: 'createdAt', dir: 'desc' },
-      scope: false,
       limit: 20,
     }),
     ctx.listNotes('transactions', id),

@@ -8,8 +8,6 @@ import { query } from '@platform/data/query';
 import { auditLog, approvalRequests } from '@platform/data/schema';
 import { refunds, transactions } from '../apps/refunds/schema';
 import type { SeedUser } from '@platform/policy/roles';
-import { engAdmin } from './helpers';
-
 // Seeded users (decideApproval re-checks requester perms, so requesters must
 // be real seeded accounts).
 const analyst: SeedUser = { id: 'u-analyst', name: 'Ana', role: 'analyst', teamId: 'kyc' };
@@ -126,13 +124,15 @@ describe('refunds redteam probes', () => {
     expect(audit.status).toBe('failed:permission_denied');
   });
 
-  it('B.3 permission: analyst lacks refunds.approve → reject denied', async () => {
+  it('review comment: refunds.reject was removed — issued refunds are terminal', async () => {
+    // Rejecting a ≥$100 request is finance's job in the Inbox (platform.reject);
+    // there is deliberately no refunds.reject action at all.
     const res = await executeAction(analyst, 'refunds.reject', {
       id: 'anything',
       reason: 'nope',
     });
     expect(res.status).toBe('failed');
-    expect(res.status === 'failed' ? res.code : '').toBe('permission_denied');
+    expect(res.status === 'failed' ? res.code : '').toBe('unknown_action');
   });
 
   it('B.5 approval bypass: misleading input cannot skip dual control on a >=$100 txn', async () => {
@@ -174,21 +174,30 @@ describe('refunds redteam probes', () => {
     expect(rows.length).toBe(1);
   });
 
-  it('B.7 failure path: processor decline leaves state unchanged + failed audit', async () => {
-    // Mock payments declines any txnId ending in 'F'.
+  it('B.7 failure path: processor decline marks refund failed + txn refund_declined', async () => {
+    // Mock payments declines any txnId ending in 'F'. The attempt is recorded:
+    // refund row 'failed', transaction terminally 'refund_declined'.
     const txnId = await makeTxn({ id: crypto.randomUUID().replace(/.$/, 'F'), amountCents: 4_000 });
     const res = await executeAction(engDev, 'refunds.request', {
       transactionId: txnId,
       reason: 'should fail',
     });
-    expect(res.status).toBe('failed');
-    expect(res.status === 'failed' ? res.code : '').toBe('run_error');
+    expect(res.status).toBe('ok');
+    expect(res.status === 'ok' ? (res.data as { status: string }).status : '').toBe('failed');
     const [txn] = await db.select().from(transactions).where(eq(transactions.id, txnId));
-    expect(txn.status).toBe('settled');
-    const rows = await db.select().from(refunds).where(eq(refunds.transactionId, txnId));
-    expect(rows.length).toBe(0);
-    const audit = await latestAudit('refunds.request');
-    expect(audit.status).toBe('failed:run_error');
+    expect(txn.status).toBe('refund_declined');
+    const [row] = await db.select().from(refunds).where(eq(refunds.transactionId, txnId));
+    expect(row.status).toBe('failed');
+
+    // refund_declined is terminal: a new request on that txn errors (not settled).
+    const retry = await executeAction(engDev, 'refunds.request', {
+      transactionId: txnId,
+      reason: 'retry',
+    });
+    // idempotency replays the recorded attempt — still one row, never a retry.
+    expect(retry.status).toBe('ok');
+    const all = await db.select().from(refunds).where(eq(refunds.transactionId, txnId));
+    expect(all.length).toBe(1);
   });
 
   it('B.1 masking: customer email + card masked via query(), real values only in db', async () => {
@@ -211,7 +220,7 @@ describe('refunds redteam probes', () => {
       rowId: String(txn.id),
     });
     expect(denied.status).toBe('failed');
-    const allowed = await executeAction(senior, 'platform.revealField', {
+    const allowed = await executeAction(engDev, 'platform.revealField', {
       appId: 'refunds',
       table: 'transactions',
       column: 'customerEmail',

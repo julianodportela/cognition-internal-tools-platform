@@ -15,19 +15,33 @@ export default async function IndexPage({
 }) {
   const ctx = await getReadCtx('refunds');
   const status = searchParams.status;
+  // Only non-sensitive columns are sortable — sorting a masked column is
+  // rejected by the platform (masked order would leak the values).
+  const SORTABLE = new Set(['occurredAt', 'amountCents', 'merchant', 'status', 'createdAt']);
+  const sortCol = searchParams.sort && SORTABLE.has(searchParams.sort) ? searchParams.sort : 'occurredAt';
+  const sortDir = searchParams.dir === 'asc' ? 'asc' : 'desc';
 
-  const { rows, nextCursor } = await ctx.query(transactions, {
-    where: status && status !== 'all' ? eq(transactions.status, status) : undefined,
-    orderBy: searchParams.sort
-      ? { column: searchParams.sort, dir: searchParams.dir === 'asc' ? 'asc' : 'desc' }
-      : { column: 'occurredAt', dir: 'desc' },
-    cursor: searchParams.cursor,
-    limit: 20,
-  });
+  let rows: Record<string, unknown>[] = [];
+  let nextCursor: string | null = null;
+  let queryError: string | null = null;
+  try {
+    const res = await ctx.query(transactions, {
+      where: status && status !== 'all' ? eq(transactions.status, status) : undefined,
+      orderBy: { column: sortCol, dir: sortDir },
+      cursor: searchParams.cursor,
+      limit: 20,
+    });
+    if (res.error) queryError = `Query rejected (${res.error.code})`;
+    rows = res.rows;
+    nextCursor = res.nextCursor;
+  } catch {
+    queryError = 'Query rejected — that sort or filter is not allowed on masked data';
+  }
 
   return (
     <div>
       <PageHeader title="Transactions" />
+      {queryError && <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">{queryError}</div>}
       <div className="mb-4 flex gap-2 text-sm">
         {TABS.map((t) => (
           <Link

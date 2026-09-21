@@ -13,7 +13,7 @@ function mulberry32(seed: number) {
 
 const rand = mulberry32(7);
 const TXN_STATUSES = ['settled', 'settled', 'settled', 'refunded', 'refund_declined'] as const;
-const REFUND_STATUSES = ['issued', 'issued', 'pending', 'failed', 'rejected'] as const;
+const REFUND_STATUSES = ['issued', 'issued', 'pending', 'failed'] as const;
 const MERCHANTS = [
   'Northwind Groceries', 'Bluebird Books', 'Atlas Transit', 'Cloud & Co',
   'Riverside Cafe', 'Summit Outdoors', 'Pixel Prints', 'Harbor Supplies',

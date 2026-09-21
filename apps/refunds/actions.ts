@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { and, eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { defineAction } from '@platform/actions/define';
 import { dualControl } from '@platform/approvals';
 import { refunds, transactions } from './schema';
@@ -7,16 +7,9 @@ import { refunds, transactions } from './schema';
 const APPROVAL_THRESHOLD_CENTS = 10_000;
 
 export const requestInput = z.object({
-  transactionId: z.string().uuid(),
+  transactionId: z.string().uuid().max(64),
   reason: z.string().min(1).max(500),
 });
-
-const refundIdInput = z.object({
-  id: z.string().min(1),
-  reason: z.string().min(1).max(500),
-});
-
-const ACTIVE_STATUSES = ['pending', 'approved', 'issued'];
 
 // Request a refund for a transaction's full amount. Approval is decided from
 // the real transaction row — never the request body — so a caller cannot send
@@ -39,61 +32,42 @@ export const request = defineAction({
     return { transactionId: String(row.id), reason: 'Guard fixture refund' };
   },
   run: async (ctx, i) => {
-    const txn = await ctx.records.get(transactions, i.transactionId);
-    if (!txn) throw new Error(`Transaction ${i.transactionId} not found`);
-    if (txn.status === 'refunded') {
-      throw new Error(`Transaction ${i.transactionId} is already refunded`);
+    // Lock the row first: concurrent requests for the same transaction
+    // serialize here, and the status check can't be raced.
+    const txn = await ctx.records.lock(transactions, i.transactionId);
+    if (txn.status !== 'settled') {
+      throw new Error(`Transaction ${i.transactionId} is '${txn.status}' — only 'settled' transactions may be refunded`);
     }
-    const existing = await ctx.query(refunds, {
-      where: and(
-        eq(refunds.transactionId, i.transactionId),
-        inArray(refunds.status, ACTIVE_STATUSES),
-      ),
-      scope: false,
-      limit: 1,
-    });
-    if (existing.rows.length > 0) {
-      throw new Error(`Transaction ${i.transactionId} already has an active refund`);
-    }
-    const result = await ctx.integrations.payments.refund(
-      i.transactionId,
-      Number(txn.amountCents),
-      `refund:${i.transactionId}`,
-    );
+    // Record intent BEFORE calling the processor: an 'issued'/'pending' row
+    // (plus the partial unique index) blocks any concurrent double-refund.
     const row = await ctx.records.insert(refunds, {
       transactionId: i.transactionId,
       amountCents: Number(txn.amountCents),
       reason: i.reason,
-      status: result.status === 'submitted' ? 'issued' : 'failed',
+      status: 'pending',
       requesterId: ctx.user.id,
       approverId: ctx.approvedBy ?? null,
-      processorRef: result.refundId,
     });
-    await ctx.records.update(transactions, i.transactionId, { status: 'refunded' });
-    return { id: row.id, status: row.status, refundId: result.refundId };
+    let result: { status: string; refundId?: string } | null = null;
+    try {
+      result = await ctx.integrations.payments.refund(
+        i.transactionId,
+        Number(txn.amountCents),
+        `refund:${i.transactionId}`,
+      );
+    } catch {
+      result = null;
+    }
+    if (result?.status === 'submitted') {
+      await ctx.records.update(refunds, row.id as string, { status: 'issued', processorRef: result.refundId });
+      await ctx.records.update(transactions, i.transactionId, { status: 'refunded' });
+    } else {
+      // Declined is terminal for this transaction in this app — no retry path.
+      await ctx.records.update(refunds, row.id as string, { status: 'failed' });
+      await ctx.records.update(transactions, i.transactionId, { status: 'refund_declined' });
+    }
+    return { id: row.id, status: result?.status === 'submitted' ? 'issued' : 'failed', refundId: result?.refundId ?? null };
   },
 });
 
-// Finance rejects a refund. Dual control always applies.
-export const reject = defineAction({
-  id: 'refunds.reject',
-  perm: 'refunds.approve',
-  risk: 'high',
-  approval: dualControl(),
-  input: refundIdInput,
-  guardFixture: async ({ firstRow }) => {
-    const row = await firstRow(refunds, eq(refunds.status, 'issued'));
-    if (!row) throw new Error("No fixture refund in status 'issued'");
-    return { id: String(row.id), reason: 'Fixture rejection' };
-  },
-  run: async (ctx, i) => {
-    const row = await ctx.records.get(refunds, i.id);
-    if (!row) throw new Error(`Refund ${i.id} not found`);
-    if (row.status === 'rejected') throw new Error(`Refund ${i.id} is already rejected`);
-    const updated = await ctx.records.update(refunds, i.id, { status: 'rejected' });
-    await ctx.records.addNote('refunds', i.id, `Rejected: ${i.reason}`);
-    return { id: updated.id, status: updated.status };
-  },
-});
-
-export const refundsActions = [request, reject];
+export const refundsActions = [request];

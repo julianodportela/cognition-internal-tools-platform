@@ -19,12 +19,12 @@ export const expenseFlow = defineStates({
 export const createInput = z.object({
   title: z.string().min(1).max(200),
   amountCents: z.number().int().positive(),
-  employeeEmail: z.string().min(3),
+  employeeEmail: z.string().min(3).max(320),
   employeeBankLast4: z.string().max(4).optional(),
   receiptNote: z.string().max(1000).optional(),
 });
 
-const idInput = z.object({ id: z.string().min(1) });
+const idInput = z.object({ id: z.string().min(1).max(64) });
 
 // Guard fixtures pick a real seeded row so guard tests exercise a real run.
 const byStatus = (status: string) => async ({ firstRow }: GuardFixtureCtx) => {
@@ -109,7 +109,7 @@ export const reject = defineAction({
   perm: 'template.approve',
   risk: 'high',
   approval: dualControl(),
-  input: z.object({ id: z.string().min(1), reason: z.string().max(1000).optional() }),
+  input: z.object({ id: z.string().min(1).max(64), reason: z.string().max(1000).optional() }),
   guardFixture: async ({ firstRow }) => ({
     id: String(
       (await firstRow(expenseRequests, eq(expenseRequests.status, 'submitted')))?.id ?? '',
@@ -132,15 +132,15 @@ export const pay = defineAction({
   tags: ['money', 'external'],
   approval: dualControl(),
   idempotency: (i) => `pay:${i.id}`,
-  input: z.object({ id: z.string().min(1), txnId: z.string().min(1) }),
+  input: z.object({ id: z.string().min(1).max(64), txnId: z.string().min(1).max(64) }),
   guardFixture: async ({ firstRow }) => {
     const row = await firstRow(expenseRequests, eq(expenseRequests.status, 'approved'));
     if (!row) throw new Error("No fixture row in status 'approved'");
     return { id: String(row.id), txnId: `txn-${row.id}` };
   },
   run: async (ctx, i) => {
-    const row = await ctx.records.get(expenseRequests, i.id);
-    if (!row || row.status !== 'approved') {
+    const row = await ctx.records.lock(expenseRequests, i.id);
+    if (row.status !== 'approved') {
       throw new Error(`Request ${i.id} is not in 'approved' status`);
     }
     const result = await ctx.integrations.payments.refund(
@@ -148,6 +148,9 @@ export const pay = defineAction({
       Number(row.amountCents),
       `pay:${i.id}`,
     );
+    if (result.status !== 'submitted') {
+      throw new Error(`Payout declined by processor for request ${i.id}`);
+    }
     const paid = await expenseFlow.transition(ctx, expenseRequests, i.id, 'paid');
     return { id: paid.id, status: paid.status, refund: result };
   },
