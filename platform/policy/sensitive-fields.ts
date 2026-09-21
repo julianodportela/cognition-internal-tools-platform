@@ -1,0 +1,17 @@
+// Field names that are ALWAYS treated as sensitive platform-wide, regardless of
+// whether an app remembered to mark its column sensitive(). Reviewed in PRs.
+export const sensitiveFieldNames = [
+  'ssn',
+  'tax_id',
+  'date_of_birth',
+  'dob',
+  'passport_number',
+  'id_document_number',
+  'bank_account',
+  'account_number',
+  'routing_number',
+  'card_number',
+  'phone',
+  'email',
+  'address',
+] as const;
