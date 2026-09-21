@@ -40,8 +40,15 @@
     {
       "idx": 5,
       "version": "7",
-      "when": 1790031680115,
-      "tag": "0005_magenta_doctor_doom",
+      "when": 1790031525304,
+      "tag": "0005_curly_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790033553151,
+      "tag": "0006_tough_madame_hydra",
       "breakpoints": true
     }
   ]
