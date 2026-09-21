@@ -89,3 +89,5 @@ export default async function InboxPage() {
     </AppShell>
   );
 }
+
+export const dynamic = 'force-dynamic';

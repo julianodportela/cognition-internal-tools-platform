@@ -38,6 +38,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -49,7 +50,14 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: (pnpm build && pnpm exec next start -p 3100 &) && npx wait-on http://localhost:3100/login
+      - run: pnpm build
+      - run: |
+          nohup pnpm exec next start -p 3100 > server.log 2>&1 &
+          npx wait-on -t 120000 http://localhost:3100/login || (cat server.log; exit 1)
+        env:
+          # CI-only: exercise the production build with the dev login-as provider.
+          ALLOW_DEV_LOGIN: 'true'
+          AUTH_SECRET: ci-only-e2e-secret-not-used-anywhere-else
       - run: pnpm test:e2e
         env:
           E2E_BASE: http://localhost:3100

@@ -34,3 +34,5 @@ export default async function Home() {
     </AppShell>
   );
 }
+
+export const dynamic = 'force-dynamic';
