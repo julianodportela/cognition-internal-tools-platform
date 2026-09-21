@@ -102,6 +102,9 @@ export function registerApp(m: AppManifest): void {
     if (!a.id.startsWith(`${m.id}.`)) {
       throw new Error(`registry: action '${a.id}' in app '${m.id}' must be namespaced '${m.id}.'`);
     }
+    if (a.internal === true) {
+      throw new Error(`registry: action '${a.id}' in app '${m.id}' may not be internal — internal actions are platform-owned`);
+    }
     registerActionInternal({ ...a, appId: a.appId ?? m.id });
   }
 }

@@ -13,6 +13,7 @@ export const appGuardRules = {
   'internal-tools/only-platform-imports': 'error',
   'internal-tools/sensitive-must-be-declared': 'error',
   'internal-tools/no-dangerous-globals': 'error',
+  'internal-tools/no-internal-action-opts': 'error',
 };
 
 export default defineConfig([

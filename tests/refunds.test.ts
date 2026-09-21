@@ -12,7 +12,6 @@ import type { SeedUser } from '@platform/policy/roles';
 // be real seeded accounts).
 const analyst: SeedUser = { id: 'u-analyst', name: 'Ana', role: 'analyst', teamId: 'kyc' };
 const support: SeedUser = { id: 'u-support', name: 'Sue', role: 'support_agent', teamId: 'support' };
-const senior: SeedUser = { id: 'u-senior', name: 'Sam', role: 'senior_reviewer', teamId: 'kyc' };
 const finance: SeedUser = { id: 'u-finance', name: 'Finn', role: 'finance_approver', teamId: 'finance' };
 const engDev: SeedUser = { id: 'u-engdev', name: 'Dev', role: 'eng_dev', teamId: 'eng' };
 

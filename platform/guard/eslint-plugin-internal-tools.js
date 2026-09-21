@@ -427,6 +427,23 @@ const rules = {
       };
     },
   },
+
+  // internal:/largeInputFields: opts would smuggle the raw-tx ctx into run().
+  'no-internal-action-opts': {
+    create(context) {
+      const BANNED_KEYS = new Set(['internal', 'largeInputFields']);
+      return {
+        Property(node) {
+          const key = node.key;
+          const name = key && key.type === 'Identifier' ? key.name
+            : key && key.type === 'Literal' ? String(key.value) : null;
+          if (name && BANNED_KEYS.has(name)) {
+            context.report({ node: key, message: `'${name}' is a platform-internal action option; app code may not request the internal ctx.${SUFFIX}` });
+          }
+        },
+      };
+    },
+  },
 };
 
 module.exports = {

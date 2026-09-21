@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { getTableColumns, eq, and } from 'drizzle-orm';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
-import { defineInternalAction, type ActionDef, type InternalActionCtx } from './define';
+import { defineInternalAction } from './define-internal';
+import type { ActionDef, InternalActionCtx } from './define';
 import { isSensitive } from '@platform/data/schema-helpers';
 import { getApp } from '@platform/registry';
 import { attachments } from '@platform/data/schema';

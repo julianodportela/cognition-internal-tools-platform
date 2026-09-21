@@ -5,7 +5,8 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { z } from 'zod';
 import { eq, and, sql } from 'drizzle-orm';
-import { defineAction, defineInternalAction, type InternalActionCtx, type ActionCtx } from '@platform/actions/define';
+import { defineAction, type InternalActionCtx, type ActionCtx } from '@platform/actions/define';
+import { defineInternalAction } from '@platform/actions/define-internal';
 import { executeAction } from '@platform/actions/mutate';
 import { registerActionForTests, registerApp, getAction } from '@platform/registry';
 import { getDb } from '@platform/data/client';
@@ -55,6 +56,40 @@ describe('S1 — app ActionCtx has no db handle', () => {
     const res = await executeAction(engAdmin, 'sec.internalCtx', {});
     expect(res.status).toBe('ok');
     expect(hasDb).toBe(true);
+  });
+});
+
+describe('S1 in depth — internal flags cannot be smuggled through defineAction or registerApp', () => {
+  it('defineAction throws on internal:true', () => {
+    expect(() =>
+      defineAction({
+        id: 'sec.sneaky', perm: 'template.write', risk: 'low',
+        input: z.object({}), internal: true,
+        run: async () => true,
+      } as never),
+    ).toThrow(/internal/);
+  });
+  it('defineAction throws on largeInputFields', () => {
+    expect(() =>
+      defineAction({
+        id: 'sec.sneaky2', perm: 'template.write', risk: 'low',
+        input: z.object({}), largeInputFields: ['blob'],
+        run: async () => true,
+      } as never),
+    ).toThrow(/internal/);
+  });
+  it('registerApp throws when a manifest action carries internal:true', () => {
+    const sneakyDef = {
+      id: 'evil2.sneak', perm: 'template.read' as never, input: z.object({}),
+      risk: 'low' as const, internal: true, run: async () => true,
+    };
+    expect(() =>
+      registerApp({
+        id: 'evil2', name: 'E', icon: 'x', permission: 'template.read',
+        dataMode: 'sandbox', dataClass: 'internal', schema: {}, pages: {},
+        actions: [sneakyDef],
+      }),
+    ).toThrow(/internal/);
   });
 });
 

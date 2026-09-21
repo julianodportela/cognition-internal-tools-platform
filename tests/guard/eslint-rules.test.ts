@@ -13,6 +13,7 @@ const RULES = [
   'no-http',
   'no-server-directives',
   'no-dangerous-globals',
+  'no-internal-action-opts',
   'no-console',
   'no-env',
   'only-platform-imports',
@@ -94,6 +95,12 @@ describe('guard eslint rules (negative fixtures)', () => {
     const v = violations(await lint(path.join(BAD, 'relative-import.ts')));
     expect(v.has('only-platform-imports:2')).toBe(true); // ../outside
     expect(v.has('only-platform-imports:3')).toBe(true); // some-random-package
+  });
+
+  it('internal-opts.ts — internal/largeInputFields keys rejected', async () => {
+    const v = violations(await lint(path.join(BAD, 'internal-opts.ts')));
+    expect(v.has('no-internal-action-opts:11')).toBe(true); // internal: true
+    expect(v.has('no-internal-action-opts:12')).toBe(true); // largeInputFields
   });
 
   it('client-comp.tsx — client component importing server APIs', async () => {

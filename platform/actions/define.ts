@@ -102,9 +102,6 @@ export interface ActionOpts<I, O> {
   appId?: string;
   guardSkip?: string;
   guardFixture?: (ctx: GuardFixtureCtx) => I | Promise<I>;
-  /** Platform-internal actions only — never set by app code. */
-  internal?: boolean;
-  largeInputFields?: string[];
   run(ctx: ActionCtx, input: I): Promise<O>;
 }
 
@@ -113,7 +110,7 @@ export interface ActionOpts<I, O> {
  * free-text inputs land in approval_requests.input_json and audit rows, and
  * unbounded strings are a storage/PII-sink risk.
  */
-function assertStringFieldsBounded(id: string, input: ZodType, exempt: string[] = []): void {
+export function assertStringFieldsBounded(id: string, input: ZodType, exempt: string[] = []): void {
   if (!(input instanceof z.ZodObject)) return;
   for (const [name, field] of Object.entries(input.shape)) {
     if (exempt.includes(name)) continue;
@@ -132,14 +129,15 @@ function assertStringFieldsBounded(id: string, input: ZodType, exempt: string[] 
 }
 
 export function defineAction<I, O>(opts: ActionOpts<I, O>): ActionDef<I, O> {
-  assertStringFieldsBounded(opts.id, opts.input, opts.largeInputFields);
+  // Defense in depth: the spread below must never let an app smuggle the
+  // internal flags that would hand run() a raw tx on ctx.db.
+  if ('internal' in opts || 'largeInputFields' in opts) {
+    throw new Error(
+      `Action ${opts.id}: 'internal'/'largeInputFields' are platform-internal and may not be set by app code. See AGENTS.md §Invariants.`,
+    );
+  }
+  assertStringFieldsBounded(opts.id, opts.input);
   return { risk: 'high', ...opts };
-}
-
-/** Platform-internal variant — run() gets the raw tx on ctx.db. */
-export function defineInternalAction<I, O>(opts: ActionOpts<I, O>): ActionDef<I, O> {
-  assertStringFieldsBounded(opts.id, opts.input, opts.largeInputFields);
-  return { risk: 'high', ...opts, internal: true };
 }
 
 /** Ergonomic fixture context handed to guardFixture — sandbox db only. */
