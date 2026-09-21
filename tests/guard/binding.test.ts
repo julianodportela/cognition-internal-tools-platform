@@ -25,7 +25,7 @@ describe('sandbox/production binding', () => {
     const s = await getDb('sandbox');
     const p = await getDb('production');
     expect(s).not.toBe(p);
-  });
+  }, 30_000); // first getDb initializes two PGlite instances + migrations + fixtures
 
   it('sandbox mode resolves mock integrations only', () => {
     const ints = resolveIntegrations('sandbox');
