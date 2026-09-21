@@ -90,9 +90,12 @@ someone else, more than one re-review, emailing customers.
 ## Open questions
 1. **[resolved]** Analysts can now approve/reject — `kyc.decide` was granted to
    `analyst` on the base branch (commit 1101cf7).
-2. **[resolved]** Senior sign-off now works — `senior_reviewer` was granted
-   `approvals.manage` on the base branch (commit 1101cf7), so Inbox requests
-   reach the required role.
+2. **[resolved]** Senior sign-off works via the two-layer model:
+   `platform.approve`/`platform.reject` require `approvals.decide` (granted to
+   working roles), and `canDecide` enforces per-request eligibility — for
+   `requiresRole('senior_reviewer')` requests only a senior_reviewer decides.
+   `approvals.manage` is now reserved as an override for dualControl requests
+   (finance/eng_admin only).
 3. **[resolved by fallback]** "Masked for everyone except the analyst who owns
    the case" is not supported by the platform: there is no ownership-scoped
    unmask. The app falls back to the existing explicit, logged reveal path —

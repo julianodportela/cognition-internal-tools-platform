@@ -63,16 +63,13 @@ const rejectedReopenable = async ({ firstRow }: GuardFixtureCtx) => {
 
 export const claim = defineAction({
   id: 'kyc.claim',
-  perm: 'kyc.read',
+  perm: 'kyc.decide', // read-only roles are denied by the platform, not by role checks
   risk: 'low',
   input: idInput,
   guardFixture: pendingUnassigned,
   run: async (ctx, i) => {
     const row = await ctx.records.get(kycReviews, i.id);
     if (!row) throw new Error(`Case ${i.id} not found`);
-    if (ctx.user.role === 'compliance_readonly') {
-      throw new Error('Read-only role cannot claim cases');
-    }
     if (row.status !== 'pending') {
       throw new Error(`Case ${i.id} is not pending`);
     }
@@ -165,16 +162,13 @@ export const reject = defineAction({
 
 export const reopen = defineAction({
   id: 'kyc.reopen',
-  perm: 'kyc.read',
+  perm: 'kyc.decide',
   risk: 'low',
   input: idInput,
   guardFixture: rejectedReopenable,
   run: async (ctx, i) => {
     const row = await ctx.records.get(kycReviews, i.id);
     if (!row) throw new Error(`Case ${i.id} not found`);
-    if (ctx.user.role === 'compliance_readonly') {
-      throw new Error('Read-only role cannot reopen cases');
-    }
     if (row.status !== 'rejected') {
       throw new Error(`Case ${i.id} is not rejected`);
     }

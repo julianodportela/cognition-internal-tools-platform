@@ -27,9 +27,14 @@ export function policyToJson(p: ApprovalPolicy): Record<string, unknown> {
 }
 
 /**
- * May `approver` decide this request? notSelf is ALWAYS enforced.
+ * Two-layer approval model:
+ * 1. `approvals.decide` (the perm on platform.approve/platform.reject) gates who may
+ *    ATTEMPT to decide anything in the Inbox — granted broadly to working roles.
+ * 2. `canDecide` below is the real per-request gate; notSelf is ALWAYS enforced:
  * - dualControl: approver ≠ requester AND (holds the action's perm OR approvals.manage)
  * - requiresRole: approver ≠ requester AND approver.role === policy.role
+ * `approvals.manage` therefore means OVERRIDE: it lets finance/eng_admin decide any
+ * dualControl request even for an action whose perm they don't hold.
  */
 export function canDecide(
   approver: SeedUser,

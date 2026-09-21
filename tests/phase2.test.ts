@@ -210,7 +210,7 @@ describe('records + soft delete', () => {
     const id = await seedCase();
     const r1 = await executeAction(senior, 'test.claim', { id });
     expect(r1.status).toBe('ok');
-    // senior2 has template.write but not approvals.manage → claim conflict fails
+    // senior2 has template.write but not admin.manage → claim conflict fails
     const r2 = await executeAction(senior2, 'test.claim', { id });
     expect(r2.status).toBe('failed');
   });
