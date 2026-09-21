@@ -19,10 +19,12 @@ export function DataTableClient({
   table,
   onRowClick,
   bulkActions,
+  appId,
 }: {
   columns: ColumnDef[];
   rows: Record<string, unknown>[];
   nextCursor: string | null;
+  appId: string;
   table?: string;
   onRowClick?: string; // href template e.g. "/a/kyc/case/{id}"
   bulkActions?: { label: string; actionId: string }[];
@@ -50,7 +52,7 @@ export function DataTableClient({
 
   const reveal = async (rowId: string, col: string) => {
     if (!table) return;
-    const res = await runAction('platform.revealField', { table, column: col, rowId });
+    const res = await runAction('platform.revealField', { appId, table, column: col, rowId });
     if (res.status === 'ok') {
       const v = (res.data as { value: unknown }).value;
       setRevealed((r) => ({ ...r, [`${rowId}.${col}`]: v }));

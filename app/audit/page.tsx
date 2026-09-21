@@ -8,6 +8,7 @@ import { auditLog } from '@platform/data/schema';
 import { query } from '@platform/data/query';
 import { PageHeader, StatusBadge } from '@platform/ui/primitives';
 import { DataTableClient } from '@platform/ui/data-table';
+import { recentEvents } from '@platform/events';
 
 export default async function AuditPage({
   searchParams,
@@ -16,7 +17,7 @@ export default async function AuditPage({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
-  if (!can(user, 'audit.view')) {
+  if (!can(user, 'audit.read')) {
     return (
       <AppShell>
         <PageHeader title="Audit log" />
@@ -60,6 +61,21 @@ export default async function AuditPage({
         <input name="entity" placeholder="entity" defaultValue={sp.entity} className="rounded border px-2 py-1 text-sm" />
         <button className="rounded bg-slate-900 px-3 py-1 text-sm text-white">Filter</button>
       </form>
+      <div className="mb-6 rounded border bg-slate-50 p-3">
+        <h2 className="mb-2 text-sm font-semibold text-slate-700">Recent events</h2>
+        <ul className="space-y-1 text-xs text-slate-600">
+          {recentEvents(15).map((e, i) => (
+            <li key={i}>
+              <span className="font-mono">{e.at.toLocaleTimeString()}</span>{' '}
+              <span className="font-medium">{e.type}</span>
+              {e.actionId ? ` · ${e.actionId}` : ''}
+              {e.actorId ? ` · ${e.actorId}` : ''}
+              {e.entityId ? ` · ${e.entityId.slice(0, 8)}` : ''}
+            </li>
+          ))}
+          {recentEvents(15).length === 0 && <li className="text-slate-400">No events yet.</li>}
+        </ul>
+      </div>
       <DataTableClient
         columns={[
           { key: 'createdAt', label: 'When' },
@@ -73,6 +89,7 @@ export default async function AuditPage({
         ]}
         rows={display}
         nextCursor={nextCursor}
+        appId="_platform"
       />
     </AppShell>
   );
