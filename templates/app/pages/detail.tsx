@@ -21,7 +21,6 @@ export default async function DetailPage({
   const { rows } = await ctx.query(expenseRequests, {
     where: eq(expenseRequests.id, id),
     limit: 1,
-    scope: false,
   });
   const row = rows[0];
   if (!row) notFound();

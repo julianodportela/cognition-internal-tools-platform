@@ -12,6 +12,8 @@ export const appGuardRules = {
   'internal-tools/no-env': 'error',
   'internal-tools/only-platform-imports': 'error',
   'internal-tools/sensitive-must-be-declared': 'error',
+  'internal-tools/no-dangerous-globals': 'error',
+  'internal-tools/no-internal-action-opts': 'error',
 };
 
 export default defineConfig([
@@ -19,7 +21,7 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ['apps/**/*.ts', 'apps/**/*.tsx', 'templates/**/*.ts', 'templates/**/*.tsx'],
+    files: ['apps/**/*.{js,mjs,cjs,ts,tsx,mts,cts}', 'templates/**/*.{js,mjs,cjs,ts,tsx,mts,cts}'],
     plugins: { 'internal-tools': internalTools },
     rules: appGuardRules,
   },

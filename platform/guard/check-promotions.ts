@@ -3,70 +3,26 @@
  * have a matching promotions/<appId>.yaml with required approvers, matching
  * sources, commit, approved_at, and redteam_passed: true.
  */
-import fs from 'fs';
 import path from 'path';
 import { getApps } from '../registry';
+import { validatePromotion } from './promotion';
 
-const ROOT = process.cwd();
-let failures = 0;
-const fail = (m: string) => {
-  failures++;
-  console.error(`✗ ${m}`);
-};
-
-const ENGINEERS = new Set(['eng_dev', 'eng_admin']);
-const SECURITY_ROLES = new Set(['eng_admin', 'compliance_readonly']);
-
-function parseYamlLite(src: string): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  let key = '';
-  for (const line of src.split('\n')) {
-    const kv = line.match(/^(\w[\w-]*):\s*(.*)$/);
-    if (kv) {
-      key = kv[1];
-      const v = kv[2].trim();
-      out[key] = v === '' ? [] : v.replace(/^["']|["']$/g, '');
-    } else {
-      const item = line.match(/^\s+-\s*(.+)$/);
-      if (item && key) {
-        (out[key] as string[]).push(item[1].trim().replace(/^["']|["']$/g, ''));
-      }
-    }
+/** Core check — returns a list of violation messages (empty = OK). */
+export function checkPromotions(root: string): string[] {
+  const failures: string[] = [];
+  for (const app of getApps()) {
+    for (const m of validatePromotion(app, root)) failures.push(m);
   }
-  return out;
+  return failures;
 }
 
-for (const app of getApps()) {
-  if (app.dataMode !== 'production') continue;
-  const f = path.join(ROOT, 'promotions', `${app.id}.yaml`);
-  if (!fs.existsSync(f)) {
-    fail(`apps/${app.id}: dataMode 'production' but promotions/${app.id}.yaml missing`);
-    continue;
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename);
+if (isMain) {
+  const failures = checkPromotions(process.cwd());
+  for (const m of failures) console.error(`✗ ${m}`);
+  if (failures.length > 0) {
+    console.error(`\n${failures.length} promotion-gate violation(s).`);
+    process.exit(1);
   }
-  const y = parseYamlLite(fs.readFileSync(f, 'utf8'));
-  const approvers = Array.isArray(y.approved_by) ? y.approved_by as string[] : [y.approved_by].filter(Boolean) as string[];
-  if (approvers.length < 1) fail(`${app.id}: promotions yaml needs >=1 approver`);
-  // require at least one engineering approver — approvers listed as role ids or user ids
-  const engOk = approvers.some((a) => ENGINEERS.has(a) || a.startsWith('u-eng'));
-  if (!engOk) fail(`${app.id}: needs at least one engineering approver`);
-  if (app.dataClass === 'sensitive') {
-    const secOk = approvers.some((a) => SECURITY_ROLES.has(a) || a.includes('compliance'));
-    if (approvers.length < 2 || !secOk) {
-      fail(`${app.id}: sensitive app needs >=2 approvers incl. security/compliance`);
-    }
-  }
-  if (!y.approved_at) fail(`${app.id}: missing approved_at`);
-  if (!y.commit) fail(`${app.id}: missing commit`);
-  const declared = (Array.isArray(y.sources) ? y.sources : []).map(String).sort();
-  const manifest = [...(app.sources ?? [])].sort();
-  if (JSON.stringify(declared) !== JSON.stringify(manifest)) {
-    fail(`${app.id}: sources mismatch yaml=${JSON.stringify(declared)} manifest=${JSON.stringify(manifest)}`);
-  }
-  if (y.redteam_passed !== 'true') fail(`${app.id}: redteam_passed must be true`);
+  console.log('guard:promotions OK');
 }
-
-if (failures > 0) {
-  console.error(`\n${failures} promotion-gate violation(s).`);
-  process.exit(1);
-}
-console.log('guard:promotions OK');

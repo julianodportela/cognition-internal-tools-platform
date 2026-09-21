@@ -44,11 +44,11 @@ export interface RoleDef {
 
 export const roles: Record<RoleId, RoleDef> = {
   analyst: {
-    permissions: ['kyc.read', 'refunds.read', 'flags.read', 'template.read', 'template.write'],
+    permissions: ['kyc.read', 'kyc.decide', 'refunds.read', 'flags.read', 'template.read', 'template.write'],
     scope: 'own',
   },
   senior_reviewer: {
-    permissions: ['kyc.read', 'kyc.decide', 'kyc.decide_high_risk', 'pii.reveal', 'template.read', 'template.write'],
+    permissions: ['kyc.read', 'kyc.decide', 'kyc.decide_high_risk', 'pii.reveal', 'approvals.manage', 'template.read', 'template.write'],
     scope: 'team',
   },
   compliance_readonly: {
@@ -56,7 +56,7 @@ export const roles: Record<RoleId, RoleDef> = {
     scope: 'all',
   },
   support_agent: {
-    permissions: ['refunds.read', 'flags.read', 'template.read'],
+    permissions: ['refunds.read', 'refunds.issue', 'flags.read', 'template.read'],
     scope: 'own',
   },
   finance_approver: {

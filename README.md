@@ -16,7 +16,8 @@ alternative to a low-code platform.
 
 ```bash
 nvm use            # Node 20 (.nvmrc)
-corepack enable && pnpm install
+corepack enable && corepack prepare pnpm@10.18.0 --activate && pnpm install
+pnpm exec playwright install chromium   # once, for pnpm test:e2e
 pnpm dev           # http://localhost:3000 → /login, pick a dev user
 ./scripts/verify   # typecheck + lint + structure/promotion guards + unit & guard tests
 pnpm test:e2e      # Playwright smoke against the dev server

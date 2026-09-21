@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
 import { users, type SeedUser } from '@platform/policy/roles';
+import { authSecret } from './secret';
 
 export interface Session {
   userId: string;
@@ -14,12 +15,8 @@ export interface IdentityProvider {
 
 const COOKIE = 'itp_session';
 
-function secret(): string {
-  return process.env.AUTH_SECRET ?? 'dev-secret-do-not-use-in-prod';
-}
-
 function sign(payload: string): string {
-  return createHmac('sha256', secret()).update(payload).digest('hex');
+  return createHmac('sha256', authSecret()).update(payload).digest('hex');
 }
 
 function devLoginAllowed(): boolean {

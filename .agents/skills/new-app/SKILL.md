@@ -7,6 +7,9 @@ description: Create a new internal app under apps/<id>/ from a plain-language re
 
 Read `AGENTS.md` first. Never skip step 1.
 
+Setup (once): `corepack enable && corepack prepare pnpm@10.18.0 --activate &&
+pnpm install && pnpm exec playwright install chromium`.
+
 1. **Spec first.** Create `apps/<id>/APP_SPEC.md` from `templates/APP_SPEC_TEMPLATE.md`
    using the requester's own words. Map each sentence with the §3 vocabulary table in
    AGENTS.md. Put anything you had to guess under "Open questions". Show the spec to the
@@ -35,6 +38,9 @@ Read `AGENTS.md` first. Never skip step 1.
    sensitive, `sources` = table names. Register in `apps/index.ts`.
 9. `pnpm db:generate` → `./scripts/verify` → `pnpm test:e2e`. Fix app code until green.
    Never touch `platform/`, guards, or add `eslint-disable`.
+   Add `tests/<id>.test.ts` covering redteam probes B.3–B.8 (permission denies,
+   scope, approval bypass/notSelf/double-decide, idempotency, failure path, PII
+   in inputs) so the probes are reproducible.
 10. Run the `redteam` skill. Include its output and the APP_SPEC.md in the PR body.
 11. Open a PR titled `app(<id>): <name>`. Tell the requester: "It's live in sandbox at
     `/a/<id>` with made-up data. To use real data, engineering runs the promote step."

@@ -14,7 +14,7 @@ let runs = 0;
 const closeCase = defineAction({
   id: 'test.closeCase',
   perm: 'test.close' as Permission,
-  input: z.object({ caseId: z.string(), ssn: z.string().optional() }),
+  input: z.object({ caseId: z.string().max(64), ssn: z.string().max(64).optional() }),
   risk: 'low',
   run: async (ctx) => {
     runs++;
