@@ -12,6 +12,8 @@ export interface FieldDef {
   type: 'text' | 'number' | 'select' | 'checkbox';
   options?: { value: string; label: string }[];
   required?: boolean;
+  /** 'money' renders a dollars input; the value is submitted as integer cents. */
+  format?: 'money';
 }
 
 function zodKind(t: z.ZodType): FieldDef['type'] {
@@ -29,7 +31,16 @@ function zodKind(t: z.ZodType): FieldDef['type'] {
   }
 }
 
-export function fieldsFromSchema(schema: ZodObject<ZodRawShape>): FieldDef[] {
+// amountCents → 'Amount cents', employeeEmail → 'Employee email'
+function humanLabel(name: string): string {
+  const words = name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+export function fieldsFromSchema(
+  schema: ZodObject<ZodRawShape>,
+  labels?: Record<string, string>,
+): FieldDef[] {
   const shape = schema.shape;
   return Object.entries(shape).map(([name, t]) => {
     const def = (t as z.ZodType & { _def: { type?: string; values?: string[] } })._def;
@@ -39,6 +50,13 @@ export function fieldsFromSchema(schema: ZodObject<ZodRawShape>): FieldDef[] {
       type === 'select' && def.values
         ? (def.values as string[]).map((v) => ({ value: v, label: v }))
         : undefined;
-    return { name, label: name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), type, options, required };
+    return {
+      name,
+      label: labels?.[name] ?? humanLabel(name),
+      type,
+      options,
+      required,
+      format: name.endsWith('Cents') ? 'money' : undefined,
+    };
   });
 }

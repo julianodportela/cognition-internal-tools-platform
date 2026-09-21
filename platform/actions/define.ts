@@ -4,12 +4,24 @@ import type { DB } from '@platform/data/client';
 import type { QueryOptions, QueryResult, AggregateOptions } from '@platform/data/query';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { Integrations } from '@platform/integrations';
+import type { SQL } from 'drizzle-orm';
 import type { RecordsApi } from '@platform/records';
 import type { AppManifest } from '@platform/registry';
 
+/**
+ * Read-only context given to approval predicates. Bound to the app's own
+ * dataMode — predicates load real rows instead of trusting request input.
+ */
+export interface ApprovalCtx {
+  user: SeedUser;
+  records: {
+    get(table: PgTable, id: string | number): Promise<Record<string, unknown> | null>;
+  };
+}
+
 export type ApprovalPolicy =
-  | { kind: 'dualControl'; when?: (input: unknown) => boolean }
-  | { kind: 'requiresRole'; role: string; when?: (input: unknown) => boolean };
+  | { kind: 'dualControl'; when?: (input: unknown, ctx: ApprovalCtx) => boolean | Promise<boolean> }
+  | { kind: 'requiresRole'; role: string; when?: (input: unknown, ctx: ApprovalCtx) => boolean | Promise<boolean> };
 
 export interface ActionCtx {
   user: SeedUser;
@@ -50,7 +62,7 @@ export interface ActionDef<I = any, O = any> {
   /** Skip in the audit-completeness guard test; value is the justification. */
   guardSkip?: string;
   /** Guard-test helper: produce a valid input (e.g. referencing a seeded row). */
-  guardFixture?: (helpers: { db: DB }) => I | Promise<I>;
+  guardFixture?: (ctx: GuardFixtureCtx) => I | Promise<I>;
   run(ctx: ActionCtx, input: I): Promise<O>;
 }
 
@@ -71,12 +83,18 @@ export interface ActionOpts<I, O> {
   tags?: ('money' | 'external')[];
   appId?: string;
   guardSkip?: string;
-  guardFixture?: (helpers: { db: DB }) => I | Promise<I>;
+  guardFixture?: (ctx: GuardFixtureCtx) => I | Promise<I>;
   run(ctx: ActionCtx, input: I): Promise<O>;
 }
 
 export function defineAction<I, O>(opts: ActionOpts<I, O>): ActionDef<I, O> {
   return { risk: 'high', ...opts };
+}
+
+/** Ergonomic fixture context handed to guardFixture — sandbox db only. */
+export interface GuardFixtureCtx {
+  firstRow(table: PgTable, where?: SQL): Promise<Record<string, unknown> | undefined>;
+  user: SeedUser;
 }
 
 /** App-code entry point for declaring a manifest (identity fn with type). */

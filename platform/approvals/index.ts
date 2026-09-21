@@ -1,14 +1,23 @@
-import type { ApprovalPolicy } from '@platform/actions/define';
+import type { ApprovalPolicy, ApprovalCtx } from '@platform/actions/define';
 import type { SeedUser, Permission } from '@platform/policy/roles';
 import { can } from '@platform/rbac/rbac';
 
-/** Request needs one approver other than the requester. */
-export function dualControl(when?: (input: unknown) => boolean): ApprovalPolicy {
+/**
+ * Request needs one approver other than the requester.
+ * `when(input, ctx)` may be async — ctx.records.get loads real rows so
+ * predicates never trust request input.
+ */
+export function dualControl(
+  when?: (input: unknown, ctx: ApprovalCtx) => boolean | Promise<boolean>,
+): ApprovalPolicy {
   return { kind: 'dualControl', when };
 }
 
 /** Request needs an approver holding a specific role. */
-export function requiresRole(role: string, when?: (input: unknown) => boolean): ApprovalPolicy {
+export function requiresRole(
+  role: string,
+  when?: (input: unknown, ctx: ApprovalCtx) => boolean | Promise<boolean>,
+): ApprovalPolicy {
   return { kind: 'requiresRole', role, when };
 }
 

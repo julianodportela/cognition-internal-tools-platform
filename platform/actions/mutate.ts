@@ -176,7 +176,11 @@ export async function executeAction(
 
   // --- Approvals ---
   if (action.approval) {
-    const triggered = !action.approval.when || action.approval.when(input);
+    // Read-only ctx so predicates load real rows — never trust request input
+    // for amounts/status that decide whether an approval is required.
+    const ro = makeRecords({ db, user, appId, reveal: new Set(), auditPush: () => {} });
+    const approvalCtx = { user, records: { get: ro.get } };
+    const triggered = !action.approval.when || await action.approval.when(input, approvalCtx);
     if (triggered) {
       // A pending request with the same idempotency key returns the same requestId.
       if (idemKey) {

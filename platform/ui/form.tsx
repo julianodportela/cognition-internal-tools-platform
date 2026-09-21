@@ -28,7 +28,8 @@ export function ActionForm({
     const input: Record<string, unknown> = {};
     for (const f of defs) {
       const raw = fd.get(f.name);
-      if (f.type === 'number') input[f.name] = raw === '' || raw == null ? undefined : Number(raw);
+      if (f.format === 'money') input[f.name] = raw === '' || raw == null ? undefined : Math.round(Number(raw) * 100);
+      else if (f.type === 'number') input[f.name] = raw === '' || raw == null ? undefined : Number(raw);
       else if (f.type === 'checkbox') input[f.name] = raw === 'on';
       else input[f.name] = raw ?? undefined;
     }
@@ -79,7 +80,12 @@ export function ActionForm({
           ) : f.type === 'checkbox' ? (
             <input type="checkbox" name={f.name} className="h-4 w-4" />
           ) : (
-            <Input name={f.name} type={f.type === 'number' ? 'number' : 'text'} required={f.required} />
+            <Input
+              name={f.name}
+              type={f.type === 'number' || f.format === 'money' ? 'number' : 'text'}
+              step={f.format === 'money' ? '0.01' : undefined}
+              required={f.required}
+            />
           )}
           {errors[f.name] && <p className="mt-1 text-xs text-red-600">{errors[f.name]}</p>}
         </div>
