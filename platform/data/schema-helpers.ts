@@ -58,6 +58,9 @@ export function isSensitive(table: unknown, column: string): boolean {
 export function maskValue(v: unknown): unknown {
   if (v === null || v === undefined) return v;
   if (typeof v === 'string') {
+    // Emails mask to ••••@domain — a bare "last4" leaks the wrong intuition
+    // (the last 4 chars of an email are a domain fragment, not an identifier).
+    if (v.includes('@')) return `••••@${v.split('@').pop()}`;
     const last4 = v.slice(-4);
     return `••••${last4}`;
   }

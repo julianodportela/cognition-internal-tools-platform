@@ -39,9 +39,7 @@ describe('template app end-to-end', () => {
     const { rows } = await query({ db, user: engAdmin }, expenseRequests, { limit: 5 });
     expect(rows.length).toBe(5);
     const email = String(rows[0].employeeEmail);
-    expect(email.startsWith('••••')).toBe(true);
-    expect(email.endsWith('test')).toBe(true); // last4 of user@example.test
-    expect(email).not.toContain('@');
+    expect(email).toBe('••••@example.test'); // emails mask to ••••@domain
   });
 
   it('revealField returns the real value and writes an audit row', async () => {
