@@ -50,6 +50,8 @@ platform primitive instead.
    where-operators (`eq, and, or, gt, lt, inArray, isNull, desc, asc`). Reads go through
    `getReadCtx().query/aggregate/listNotes/listAttachments`; writes through
    `ctx.records.insert/update/remove/claim/assign/release/addNote` inside an action.
+   (Row scope falls back owner_id → team_id → *no restriction* when neither column
+   exists — customer-style tables are intentionally visible to all roles.)
 2. **No raw SQL, no HTTP, no filesystem, no env vars, no console.** `fetch`, `axios`,
    `fs`, `process.env`, `console.*`, `sql\`\`` are all banned in app code. External
    systems are reached only via `ctx.integrations.*` (payments, kyc, flags, storage).
@@ -63,8 +65,9 @@ platform primitive instead.
    same app dir are fine. Anything else is an error — ask engineering to add a primitive.
 5. **Sensitive fields are declared.** Any column whose name is in
    `platform/policy/sensitive-fields.ts` (email, phone, ssn, dob, account numbers, …)
-   must be wrapped in `sensitive()`. Masked values render as `••••1234`; the only unmask
-   path is the audited built-in `platform.revealField` (needs `pii.reveal`).
+   must be wrapped in `sensitive()`. Masked values render as `••••1234` (emails as
+   `••••@domain`); the only unmask path is the audited built-in
+   `platform.revealField` (needs `pii.reveal`).
 6. **Approval is opt‑out.** `defineAction` defaults to `risk: 'high'`, and a high-risk
    action **must** declare an `approval` policy (`dualControl(when?)`, `requiresRole(role,
    when?)`). Only mark `risk: 'low'` for reads-like or reversible writes (create draft,

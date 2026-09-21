@@ -13,6 +13,9 @@ a report (paste into the PR). Any FAIL blocks the PR.
 pnpm guard:redteam        # lint apps/templates with the internal-tools plugin + tests/guard
 ./scripts/verify
 ```
+When restarting the dev server, kill it by port (`fuser -k 3000/tcp`), never
+`pkill -f "next dev"`/`"pnpm dev"` — the pattern matches your own shell's
+command line and kills it.
 Confirm: zero `eslint-disable` in `apps/<id>/`; `pnpm guard:structure` clean; every
 action appears in the audit-completeness test output.
 

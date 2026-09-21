@@ -17,7 +17,7 @@ const fail = (m: string) => {
 
 const ALLOWED_TOP = new Set([
   'app', 'apps', 'platform', 'templates', 'tests', 'scripts', 'promotions',
-  'drizzle', '.agents', '.github',
+  'drizzle', '.agents', '.github', 'docs',
 ]);
 
 const ROOT_FILES_OK = (f: string) =>

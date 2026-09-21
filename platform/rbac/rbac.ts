@@ -24,7 +24,8 @@ export function requirePerm(user: SeedUser, perm: Permission): void {
  * Row-scope predicate based on the user's role scope:
  *  - 'all'  → no restriction
  *  - 'team' → team_id = user.teamId (falls back to owner_id if no team_id column)
- *  - 'own'  → owner_id = user.id (falls back to team_id, else no restriction)
+ *  - 'own'  → owner_id = user.id (falls back to team_id, else NO RESTRICTION —
+ *             a table with neither column is visible to every role)
  */
 export function scopePredicate(user: SeedUser, table: PgTable): SQL | undefined {
   const scope = roles[user.role].scope;
