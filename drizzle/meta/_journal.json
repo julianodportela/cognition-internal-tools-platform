@@ -22,6 +22,13 @@
       "when": 1790025187920,
       "tag": "0002_messy_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790026743777,
+      "tag": "0003_kind_the_anarchist",
+      "breakpoints": true
     }
   ]
 }
