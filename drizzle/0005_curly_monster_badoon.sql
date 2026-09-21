@@ -1,0 +1,20 @@
+CREATE TABLE "kyc_reviews" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"customer_ref" text NOT NULL,
+	"full_name" text,
+	"date_of_birth" text,
+	"country" text NOT NULL,
+	"id_document_type" text NOT NULL,
+	"id_document_number" text,
+	"risk_score" text NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"assignee_id" text,
+	"team_id" text NOT NULL,
+	"due_at" timestamp with time zone NOT NULL,
+	"decided_by" text,
+	"decided_at" timestamp with time zone,
+	"decision_reason" text,
+	"resubmission_count" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
