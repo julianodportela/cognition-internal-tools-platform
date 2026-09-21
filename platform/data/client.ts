@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle, type PgliteDatabase } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
@@ -24,7 +25,12 @@ function urlFor(mode: DataMode): string {
 const cache = new Map<DataMode, Promise<DB>>();
 
 async function create(mode: DataMode): Promise<DB> {
-  const client = new PGlite(urlFor(mode));
+  const url = urlFor(mode);
+  if (!url.startsWith('memory://') && !url.includes('://')) {
+    // file-backed PGlite needs its data dir to exist
+    fs.mkdirSync(url, { recursive: true });
+  }
+  const client = new PGlite(url);
   const db = drizzle(client, { schema: platformSchema });
   await migrate(db, {
     migrationsFolder: path.join(process.cwd(), 'drizzle'),
@@ -47,6 +53,7 @@ export function getDb(mode: DataMode = 'sandbox'): Promise<DB> {
   let p = cache.get(mode);
   if (!p) {
     p = create(mode);
+    p.catch(() => cache.delete(mode));
     cache.set(mode, p);
   }
   return p;
