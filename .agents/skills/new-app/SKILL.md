@@ -7,6 +7,9 @@ description: Create a new internal app under apps/<id>/ from a plain-language re
 
 Read `AGENTS.md` first. Never skip step 1.
 
+Setup (once): `corepack enable && corepack prepare pnpm@10.18.0 --activate &&
+pnpm install && pnpm exec playwright install chromium`.
+
 1. **Spec first.** Create `apps/<id>/APP_SPEC.md` from `templates/APP_SPEC_TEMPLATE.md`
    using the requester's own words. Map each sentence with the §3 vocabulary table in
    AGENTS.md. Put anything you had to guess under "Open questions". Show the spec to the

@@ -40,11 +40,31 @@ An app is **data + actions + screens**:
 - **manifest.ts** — `defineApp({...})` ties it together. `dataMode: 'sandbox'` always for
   a new app.
 
-## 2. Non‑negotiable invariants (enforced by lint/types/tests, not by trust)
+## 2. Non‑negotiable invariants
 
-The `internal-tools` ESLint plugin, `pnpm guard:structure`, and `tests/guard/*` fail the
-build if any of these are violated. Do not add `eslint-disable`; the fix is to use the
-platform primitive instead.
+### Enforced in code (fail at runtime or build, not by trust)
+
+The `internal-tools` ESLint plugin, `pnpm guard:structure`, `pnpm guard:promotions`,
+and `tests/guard/*` + `tests/security/*` fail the build if any of these are violated.
+Do not add `eslint-disable`; the fix is to use the platform primitive instead.
+
+- **Row scope cannot be disabled by app code.** `query`/`records`/`revealField` apply
+  the caller's scope server-side; `scope`/`includeDeleted` options don't exist in the
+  app-facing API and are rejected at runtime if smuggled in. (Scope falls back
+  owner_id → team_id → *no restriction* when neither column exists.)
+- **Audit atomicity.** The run, its audit rows, and the idempotency claim live in ONE
+  transaction in `executeCore`; a failed run writes only a `failed:*` audit row.
+- **Promotion is enforced at runtime.** A `dataMode:'production'` app without a valid
+  `promotions/<appId>.yaml` throws `promotion_required` — `getDb('production')` is
+  capability-gated to `platform/data/internal.ts`.
+- **Registry namespacing.** `registerApp` rejects duplicate app/table/action ids and
+  any action id not prefixed `${appId}.` — an app can never shadow a platform action.
+- **The action ctx is sealed.** App `run()` gets a frozen object with NO `db` key;
+  `@platform/registry` is a *type-only* import for apps (runtime access is banned).
+- **Secrets fail closed.** `NODE_ENV=production` without `AUTH_SECRET` throws at
+  startup (`instrumentation.ts`) and at first use (`platform/auth/secret.ts`).
+
+### Conventions you must still follow (enforced where possible, reviewed in PRs)
 
 1. **No raw database.** Never import `@platform/data/client` or `drizzle-orm` beyond the
    where-operators (`eq, and, or, gt, lt, inArray, isNull, desc, asc`). Reads go through
@@ -62,7 +82,9 @@ platform primitive instead.
    `@platform/approvals`, `@platform/workflow`, `@platform/data/read`,
    `@platform/data/schema-helpers`, `zod`, `react`, `next/link`,
    `next/navigation` (`redirect`, `notFound`, `useRouter`). Relative imports inside the
-   same app dir are fine. Anything else is an error — ask engineering to add a primitive.
+   same app dir are fine (never `..`). `@platform/registry` is **not** importable by
+   app code (type imports only). Anything else is an error — ask engineering to add a
+   primitive.
 5. **Sensitive fields are declared.** Any column whose name is in
    `platform/policy/sensitive-fields.ts` (email, phone, ssn, dob, account numbers, …)
    must be wrapped in `sensitive()`. Masked values render as `••••1234` (emails as
@@ -133,7 +155,9 @@ Dev login-as users: `u-analyst`, `u-senior`, `u-compliance`, `u-support`, `u-fin
 ## 6. Commands
 
 ```
-pnpm install            pnpm dev (http://localhost:3000, /login to pick a user)
+corepack enable && corepack prepare pnpm@10.18.0 --activate && pnpm install
+pnpm exec playwright install chromium   (once, for e2e)
+pnpm dev (http://localhost:3000, /login to pick a user)
 ./scripts/verify        pnpm test:e2e        pnpm guard:redteam
 pnpm db:generate        (after editing any schema.ts)      pnpm db:reset-sandbox
 ```

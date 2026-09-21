@@ -11,8 +11,11 @@ a report (paste into the PR). Any FAIL blocks the PR.
 ## A. Mechanical (must all pass)
 ```
 pnpm guard:redteam        # lint apps/templates with the internal-tools plugin + tests/guard
-./scripts/verify
+./scripts/verify          # includes tests/security — green ≠ safe, but red = unsafe
 ```
+A green verify is necessary, not sufficient: `tests/security/*` must actually RUN
+(check the vitest counts) — a skipped or empty security suite means the probes
+were never exercised.
 When restarting the dev server, kill it by port (`fuser -k 3000/tcp`), never
 `pkill -f "next dev"`/`"pnpm dev"` — the pattern matches your own shell's
 command line and kills it.

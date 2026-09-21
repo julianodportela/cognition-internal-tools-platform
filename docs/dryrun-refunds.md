@@ -30,6 +30,10 @@ Branch: `devin/1790026621-refunds-app` (not pushed). Requester: client's support
 - `refunds` (transaction_id, amount_cents, reason, status pending/approved/issued/failed/rejected, requester_id, approver_id, processor_ref, created_at).
 - `refunds.request` — perm `refunds.issue`, risk high, `dualControl` predicate loads the transaction row and requires sign-off at ≥ 10_000 cents (fail-closed on missing row); `idempotency: refund:<transactionId>`; `rateLimit 20/min`; `tags: money, external`; calls `ctx.integrations.payments.refund`, inserts the `refunds` row and marks the txn `refunded`. Double-refund is blocked by the global idempotency key AND an in-run check for active refunds.
 - `refunds.reject` — perm `refunds.approve`, `dualControl()` always.
+  **Post-review note:** `refunds.reject` was removed in the review remediation —
+  an issued refund cannot be un-issued, and rejecting a ≥$100 request is finance's
+  job via `platform.reject` in the Inbox. "Retrying a declined refund" is out of
+  scope (the transaction lands in terminal `refund_declined`).
 - Screens: Queue (transactions, masked email/card, status tabs), Refunds (audit view: every refund + requester/approver), Detail (transaction + refund history + request form + notes).
 
 ## Redteam report
