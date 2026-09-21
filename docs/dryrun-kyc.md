@@ -22,7 +22,7 @@ Branch: `devin/1790031184-kyc-app` from `devin/1790026621-refunds-app`. Requeste
 5. **Fixture typing rejects a named interface** — fixtures must be plain literals inferring to `Record<string, Record<string, unknown>[]>`; a named row interface fails assignment. Template comment could say so.
 6. **Failed actions audit with `entityId: null`** (entity = action id), so "audit rows for this row" assertions must filter by `actionId` only. Test-authoring papercut.
 7. **`run_error` swallows the thrown message** — callers get `Action failed (ref …)`; UI can't show "already re-reviewed" vs "not pending". Tests assert `failed` + unchanged row. A `userMessage` allow-list on `Error` would help.
-8. **`ctx.records.claim` rejects already-assigned rows only for non-`approvals.manage` users**, so a finance user could re-claim someone's case; the action re-checks `status === 'pending'` so it's harmless here, but the primitive's override rule isn't documented.
+8. **[resolved on base, 1101cf7]** ~~`ctx.records.claim` rejects already-assigned rows only for non-`approvals.manage` users~~ — the override now requires `admin.manage`; the action still re-checks `status === 'pending'`.
 9. **`pnpm` not on PATH in fresh shells** until `source ~/.nvm/nvm.sh` — the setup one-liner's `nvm` step failed once for this reason.
 10. **Test table name collision:** `tests/helpers.ts` already creates a `kyc_cases` table, so the app table is `kyc_reviews`. Surprising for a "kyc" app; harness could reserve/namespace test tables.
 11. **Skill has no step for app-specific e2e** (same as refunds friction #8). Added `tests/e2e/kyc.spec.ts` anyway; Playwright's `webServer` boots `pnpm dev` itself so no manual server juggling was needed this time.
