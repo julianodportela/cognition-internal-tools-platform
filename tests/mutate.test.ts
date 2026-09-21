@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { z } from 'zod';
 import { defineAction } from '@platform/actions/define';
+import type { Permission } from '@platform/policy/roles';
 import { executeAction } from '@platform/actions/mutate';
 import { registerTestAction } from './register-action';
 import { getDb } from '@platform/data/client';
@@ -12,7 +13,7 @@ let runs = 0;
 
 const closeCase = defineAction({
   id: 'test.closeCase',
-  perm: 'test.close',
+  perm: 'test.close' as Permission,
   input: z.object({ caseId: z.string(), ssn: z.string().optional() }),
   risk: 'low',
   run: async (ctx) => {
@@ -24,7 +25,7 @@ const closeCase = defineAction({
 
 const pingAction = defineAction({
   id: 'test.ping',
-  perm: 'test.ping',
+  perm: 'test.ping' as Permission,
   input: z.object({ n: z.number() }),
   risk: 'low',
   idempotency: (i) => `ping-${i.n}`,
@@ -36,10 +37,10 @@ const pingAction = defineAction({
 
 const limited = defineAction({
   id: 'test.limited',
-  perm: 'test.limited',
+  perm: 'test.limited' as Permission,
   input: z.object({}),
   risk: 'low',
-  rateLimit: { perUser: 2, perMinute: 1 },
+  rateLimit: { max: 2, windowSeconds: 60 },
   run: async () => 'ok',
 });
 

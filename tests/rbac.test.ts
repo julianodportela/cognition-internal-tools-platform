@@ -10,7 +10,7 @@ describe('rbac', () => {
   it('can() reflects role permissions', () => {
     expect(can(senior, 'pii.reveal')).toBe(true);
     expect(can(analyst, 'pii.reveal')).toBe(false);
-    expect(can(engAdmin, 'audit.view')).toBe(true);
+    expect(can(engAdmin, 'audit.read')).toBe(true);
   });
 
   it('requirePerm throws PermissionDenied', () => {
