@@ -85,13 +85,17 @@ than staging and production, un-archiving, editing a flag's key/tags after creat
 Slack/email notifications.
 
 ## Open questions
-1. **`flags.prod.toggle` is not used.** That permission is held only by `eng_admin`. If
-   production *requests* required it, ordinary engineers could not request a production
-   change at all, which contradicts "needs a second engineer to approve". So production
-   requests use `flags.toggle` + a mandatory second approver, and the "admin only for
-   payments/kyc" rule is enforced through the approver's role instead. If you would
-   rather only admins can even *request* production changes, say so and we switch the
-   production actions to `flags.prod.toggle`.
+1. **`flags.prod.toggle` is not used — decided.** The requester asked that production
+   changes be *requested* with `flags.prod.toggle` if both `eng_dev` and `eng_admin` hold
+   it. Checked `platform/policy/roles.ts`: only `eng_admin` holds it. Requiring it would
+   stop ordinary engineers from requesting a production change at all, contradicting
+   "needs a second engineer to approve", so per the requester's fallback instruction the
+   production actions **stay on `flags.toggle`** plus the mandatory second approver
+   (`dualControl`) / engineering admin (`requiresRole('eng_admin')`). Granting
+   `flags.prod.toggle` to `eng_dev` would be a reviewed `platform/` change; if engineering
+   makes it, switch both production actions' `perm` to `flags.prod.toggle`.
+   Note: `dualControl` also accepts any approver holding `approvals.manage`; after the
+   base-branch change that includes `senior_reviewer` as well as `eng_admin`.
 2. **Two production buttons.** The platform allows one approval rule per action, so the
    "second engineer" rule and the "admin" rule are two actions. The screen shows only
    the right one for each flag, and the server refuses the wrong one.

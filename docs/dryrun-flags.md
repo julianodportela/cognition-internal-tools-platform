@@ -29,8 +29,12 @@ full history, 90-day stale list, archive-never-delete, mock flag service.
 2. **`flags.prod.toggle` cannot be used as the perm for production requests.** Only
    `eng_admin` holds it; using it would stop ordinary engineers from *requesting* production
    changes, contradicting "needs a second engineer to approve". Production actions therefore
-   use `flags.toggle` + mandatory approval; `flags.prod.toggle` is unused. Recorded as APP_SPEC
-   open question 1 — the requester must confirm which reading they want.
+   use `flags.toggle` + mandatory approval; `flags.prod.toggle` is unused. Requester decided
+   (post-PR): use `flags.prod.toggle` only if `eng_dev` also holds it — it does not (verified in
+   roles.ts after merging 1101cf7), so the actions stay as built; recorded in APP_SPEC question 1.
+   Side effect of 1101cf7: `senior_reviewer` now holds `approvals.manage`, so `dualControl` lets
+   a senior reviewer approve an untagged production flag change (`tests/flags.test.ts` asserts
+   the requester can't self-approve; approver-role breadth is platform policy, noted in spec).
 3. **No app-facing `can(user, perm)` helper.** The allowed imports expose no way to ask
    whether the current viewer holds `flags.toggle`, so the "New flag" form and
    `FlagControls` render for analysts too; the platform then returns `permission_denied`.

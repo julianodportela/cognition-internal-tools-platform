@@ -15,7 +15,7 @@ import { sensitiveFieldNames } from '@platform/policy/sensitive-fields';
 import { flags, flagChanges } from '../apps/flags/schema';
 import { flagsActions, STALE_AFTER_DAYS } from '../apps/flags/actions';
 import { flagsManifest } from '../apps/flags/manifest';
-import type { SeedUser } from '@platform/policy/roles';
+import { roles, type SeedUser } from '@platform/policy/roles';
 
 // Seeded users (decideApproval re-checks requester perms, so requesters must
 // be real seeded accounts). engAdmin doubles as the "second engineer".
@@ -287,6 +287,13 @@ describe('flags redteam probes', () => {
       { where: and(isNull(flags.archivedAt), lt(flags.lastChangedAt, cutoff)), limit: 50 },
     );
     expect(rows.length).toBe(staleRows.length);
+  });
+
+  it("B.5 flags.prod.toggle: only eng_admin holds it (spec question 1 decision)", () => {
+    for (const [role, def] of Object.entries(roles)) {
+      const has = def.permissions.includes('flags.prod.toggle');
+      expect(has, `role ${role}`).toBe(role === 'eng_admin');
+    }
   });
 
   it('B.4 scope: flags have no owner/team column — analyst sees every flag (intended)', async () => {
