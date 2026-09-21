@@ -15,6 +15,13 @@
       "when": 1790024500809,
       "tag": "0001_mixed_punisher",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790025187920,
+      "tag": "0002_messy_archangel",
+      "breakpoints": true
     }
   ]
 }
