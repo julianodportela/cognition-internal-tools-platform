@@ -36,6 +36,13 @@
       "when": 1790029918590,
       "tag": "0004_chemical_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790031525304,
+      "tag": "0005_curly_monster_badoon",
+      "breakpoints": true
     }
   ]
 }
