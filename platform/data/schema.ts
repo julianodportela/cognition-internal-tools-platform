@@ -42,6 +42,7 @@ export const auditLog = pgTable(
 export const idempotencyKeys = pgTable('idempotency_keys', {
   key: text('key').primaryKey(),
   actionId: text('action_id').notNull(),
+  status: text('status').notNull().default('completed'), // in_progress|completed
   resultJson: text('result_json'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
     .notNull()
@@ -116,6 +117,11 @@ export const attachments = pgTable(
   (t) => [index('attachments_entity_idx').on(t.appId, t.entity, t.entityId)],
 );
 
+export const jobLeases = pgTable('job_leases', {
+  name: text('name').primaryKey(),
+  leasedUntil: timestamp('leased_until', { withTimezone: true, mode: 'date' }).notNull(),
+});
+
 export const platformSchema = {
   users,
   auditLog,
@@ -124,4 +130,5 @@ export const platformSchema = {
   approvalRequests,
   notes,
   attachments,
+  jobLeases,
 };

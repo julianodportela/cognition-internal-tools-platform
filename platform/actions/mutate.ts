@@ -1,10 +1,11 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, lt } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import type { SeedUser } from '@platform/policy/roles';
 import { PermissionDenied, requirePerm } from '@platform/rbac/rbac';
-import { getDb, type DB, type DataMode } from '@platform/data/client';
-import { auditLog, idempotencyKeys, approvalRequests, users as usersTable } from '@platform/data/schema';
-import { maskObject, query as runQuery, aggregate as runAggregate, type QueryCtx } from '@platform/data/query';
+import type { DB, DataMode } from '@platform/data/client';
+import { getAppDb, getPlatformDb } from '@platform/data/internal';
+import { auditLog, idempotencyKeys, rateLimitBuckets, approvalRequests, users as usersTable } from '@platform/data/schema';
+import { maskObject, query as runQuery, aggregate as runAggregate, type QueryCtx, type QueryOptions } from '@platform/data/query';
 import { resolveIntegrations } from '@platform/integrations';
 import { getAction, getApp } from '@platform/registry';
 import { makeRecords } from '@platform/records';
@@ -12,23 +13,25 @@ import { policyToJson } from '@platform/approvals';
 import { emit } from '@platform/events';
 import { ensureJobsStarted } from '@platform/events/jobs';
 import { userById } from '@platform/policy/roles';
-import type { ActionDef, InternalActionCtx, MutateResult } from './define';
-
-// --- In-memory rate limiting (per process; swap for shared store later) ---
-const buckets = new Map<string, number[]>();
-function checkRateLimit(userId: string, actionId: string, limit: { max: number; windowSeconds: number }): boolean {
-  const key = `${userId}:${actionId}`;
-  const now = Date.now();
-  const hits = (buckets.get(key) ?? []).filter((t) => now - t < limit.windowSeconds * 1000);
-  if (hits.length >= limit.max) return false;
-  hits.push(now);
-  buckets.set(key, hits);
-  return true;
-}
+import { log } from '@platform/log';
+import type { ActionCtx, ActionDef, InternalActionCtx, MutateResult } from './define';
 
 /** Test-only escape hatch; never exported to app code. */
 export interface InternalExecOpts {
   _forceDataMode?: DataMode;
+}
+
+class InProgressError extends Error {
+  constructor() {
+    super('another request with the same idempotency key is in progress');
+    this.name = 'in_progress';
+  }
+}
+class RateLimitedError extends Error {
+  constructor(actionId: string) {
+    super(`Rate limit exceeded for ${actionId}`);
+    this.name = 'rate_limited';
+  }
 }
 
 function validationIssues(err: { issues?: { path: PropertyKey[]; message: string }[] }) {
@@ -37,6 +40,8 @@ function validationIssues(err: { issues?: { path: PropertyKey[]; message: string
     message: i.message,
   }));
 }
+
+type AuditCall = { entity: string; id: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null };
 
 async function insertAudit(
   db: DB,
@@ -68,18 +73,30 @@ async function insertAudit(
 function buildCtx(
   db: DB,
   user: SeedUser,
-  action: ActionDef,
   appId: string | null,
   requestId: string,
   dataMode: DataMode,
-  auditCalls: { entity: string; id: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null }[],
+  auditCalls: AuditCall[],
+  approvedBy?: string,
 ): InternalActionCtx {
   const reveal = new Set<string>();
   const qctx: QueryCtx = { db, user, reveal };
-  const ctx: InternalActionCtx = {
+  // App-facing query/aggregate closures strip scope/includeDeleted — there is
+  // no runtime opt-out of row visibility from inside an action either.
+  const stripOpts = (o?: QueryOptions): QueryOptions => {
+    const { scope, includeDeleted, ...rest } = o ?? {};
+    if (scope !== undefined || includeDeleted !== undefined) {
+      throw new Error(
+        "query options 'scope'/'includeDeleted' are not available to app code. See AGENTS.md §Invariants.",
+      );
+    }
+    return rest;
+  };
+  return {
     user,
     db,
-    query: (t, o) => runQuery(qctx, t, o),
+    approvedBy,
+    query: (t, o) => runQuery(qctx, t, stripOpts(o)),
     aggregate: (t, o) => runAggregate(qctx, t, o),
     records: makeRecords({ db, user, appId, reveal, auditPush: (c) => auditCalls.push(c) }),
     integrations: resolveIntegrations(dataMode),
@@ -93,14 +110,19 @@ function buildCtx(
       },
     },
   };
-  void action;
-  return ctx;
+}
+
+/** The ctx app action code actually sees: frozen, and own-keys exclude 'db'. */
+function publicCtx(inner: InternalActionCtx): ActionCtx {
+  const { db: _dbUnused, ...pub } = inner;
+  void _dbUnused;
+  return Object.freeze(pub);
 }
 
 async function writeAudits(
   db: DB,
   ctx: { requestId: string; userId: string; actionId: string; appId: string | null },
-  auditCalls: { entity: string; id: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null }[],
+  auditCalls: AuditCall[],
 ) {
   if (auditCalls.length === 0) {
     await insertAudit(db, {
@@ -119,6 +141,61 @@ async function writeAudits(
   }
 }
 
+/** Durable rate limit via rate_limit_buckets — survives multi-process and
+ *  restart, unlike an in-memory Map. Runs inside the action's transaction. */
+async function consumeRateLimit(tx: DB, userId: string, actionId: string, limit: { max: number; windowSeconds: number }): Promise<void> {
+  const windowMs = limit.windowSeconds * 1000;
+  // Prune rows whose window has fully expired.
+  await tx
+    .delete(rateLimitBuckets)
+    .where(lt(rateLimitBuckets.windowStart, new Date(Date.now() - windowMs)));
+  const [bucket] = await tx
+    .select()
+    .from(rateLimitBuckets)
+    .where(and(eq(rateLimitBuckets.userId, userId), eq(rateLimitBuckets.actionId, actionId)))
+    .limit(1);
+  if (!bucket) {
+    await tx.insert(rateLimitBuckets).values({ userId, actionId, count: 1, windowStart: new Date() });
+    return;
+  }
+  if (bucket.count >= limit.max) throw new RateLimitedError(actionId);
+  await tx
+    .update(rateLimitBuckets)
+    .set({ count: bucket.count + 1 })
+    .where(eq(rateLimitBuckets.id, bucket.id));
+}
+
+interface CoreParams {
+  action: ActionDef;
+  requester: SeedUser;
+  input: unknown;
+  appId: string | null;
+  dataMode: DataMode;
+  requestId: string;
+  approvedBy?: string;
+}
+
+type CoreOutcome =
+  | { kind: 'replayed'; data: unknown }
+  | { kind: 'executed'; data: unknown };
+
+/**
+ * THE transactional core every money-action goes through — one db.transaction:
+ *  (1) claim the idempotency key as in_progress (ON CONFLICT → replay/in_progress)
+ *  (2) consume a rate-limit bucket (durable table)
+ *  (3) run the action
+ *  (4) write audit rows
+ *  (5) mark the key completed with the stored result
+ * A run() error rolls all of it back; the failed audit row is written
+ * afterwards in a separate small transaction by the caller.
+ *
+ * decideApproval runs the identical steps via executeCoreTx inside its own
+ * outer transaction so the decision and the execution commit atomically.
+ */
+export async function executeCore(db: DB, p: CoreParams): Promise<CoreOutcome> {
+  return db.transaction((tx) => executeCoreTx(tx as DB, p));
+}
+
 export async function executeAction(
   user: SeedUser,
   actionId: string,
@@ -135,7 +212,7 @@ export async function executeAction(
   const appId = action.appId ?? (rawInput as { appId?: string } | null)?.appId ?? null;
   const app = appId ? getApp(appId) : undefined;
   const dataMode: DataMode = opts._forceDataMode ?? app?.dataMode ?? 'sandbox';
-  const db = await getDb(dataMode);
+  const db = app ? await getAppDb(app) : await getPlatformDb('sandbox');
   const requestId = randomUUID();
   if (appId && !app) {
     await insertAudit(db, {
@@ -168,18 +245,43 @@ export async function executeAction(
   }
   const input = parsed.data;
 
-  if (action.rateLimit && !checkRateLimit(user.id, actionId, action.rateLimit)) {
-    return fail('rate_limited', `Rate limit exceeded for ${actionId}`);
+  const idemKey = action.idempotency?.(input as never);
+
+  // Idempotency lookup BEFORE the approval branch: a replayed call returns the
+  // stored result without minting a second approval request.
+  if (idemKey) {
+    const [existing] = await db
+      .select()
+      .from(idempotencyKeys)
+      .where(eq(idempotencyKeys.key, `${actionId}:${idemKey}`))
+      .limit(1);
+    if (existing?.status === 'completed' && existing.resultJson != null) {
+      return { status: 'ok', data: JSON.parse(existing.resultJson) };
+    }
+    if (existing?.status === 'in_progress') {
+      return { status: 'failed', code: 'in_progress', message: `Action failed (ref ${requestId})` };
+    }
   }
 
-  const idemKey = action.idempotency?.(input);
+  // Early rate-limit check so a throttled caller fails fast; the authoritative
+  // increment happens inside the transaction in executeCore.
+  if (action.rateLimit) {
+    const [bucket] = await db
+      .select()
+      .from(rateLimitBuckets)
+      .where(and(eq(rateLimitBuckets.userId, user.id), eq(rateLimitBuckets.actionId, actionId)))
+      .limit(1);
+    if (bucket && bucket.windowStart.getTime() > Date.now() - action.rateLimit.windowSeconds * 1000 && bucket.count >= action.rateLimit.max) {
+      return fail('rate_limited', `Rate limit exceeded for ${actionId}`);
+    }
+  }
 
   // --- Approvals ---
   if (action.approval) {
     // Read-only ctx so predicates load real rows — never trust request input
     // for amounts/status that decide whether an approval is required.
     const ro = makeRecords({ db, user, appId, reveal: new Set(), auditPush: () => {} });
-    const approvalCtx = { user, records: { get: ro.get } };
+    const approvalCtx = Object.freeze({ user, records: { get: ro.get } });
     const triggered = !action.approval.when || await action.approval.when(input, approvalCtx);
     if (triggered) {
       // A pending request with the same idempotency key returns the same requestId.
@@ -193,12 +295,14 @@ export async function executeAction(
           return { status: 'needs_approval', requestId: existing[0].id };
         }
       }
+      // input_json is masked before storage — free-text fields never persist raw PII.
+      const maskedInput = maskObject('approval_requests', input as Record<string, unknown>);
       await db.insert(approvalRequests).values({
         id: requestId,
         actionId,
         appId,
         requesterId: user.id,
-        inputJson: JSON.stringify(input),
+        inputJson: JSON.stringify(maskedInput),
         policyJson: JSON.stringify(policyToJson(action.approval)),
         idemKey: idemKey ? `${actionId}:${idemKey}` : null,
         status: 'pending',
@@ -206,52 +310,37 @@ export async function executeAction(
       await insertAudit(db, {
         requestId, actorId: user.id, actionId, appId,
         entity: 'approval_requests', entityId: requestId,
-        before: null, after: { status: 'pending', input }, status: 'needs_approval',
+        before: null, after: { status: 'pending', input: maskedInput }, status: 'needs_approval',
       });
       await emit({ type: 'approval.requested', actorId: user.id, appId, actionId, entityId: requestId });
       return { status: 'needs_approval', requestId };
     }
   }
 
-  if (idemKey) {
-    const existing = await db
-      .select()
-      .from(idempotencyKeys)
-      .where(eq(idempotencyKeys.key, `${actionId}:${idemKey}`));
-    if (existing[0]?.resultJson != null) {
-      return { status: 'ok', data: JSON.parse(existing[0].resultJson) };
-    }
-  }
-
-  const auditCalls: { entity: string; id: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null }[] = [];
-
-  let data: unknown;
   try {
-    data = await db.transaction(async (tx) => {
-      const txCtx = buildCtx(tx as DB, user, action, appId, requestId, dataMode, auditCalls);
-      return action.run(txCtx, input as never);
-    });
+    const outcome = await executeCore(db, { action, requester: user, input, appId, dataMode, requestId });
+    if (outcome.kind === 'replayed') return { status: 'ok', data: outcome.data };
+    await emit({ type: 'action.completed', actorId: user.id, appId, actionId });
+    return { status: 'ok', data: outcome.data };
   } catch (e) {
-    return fail('run_error', e instanceof Error ? e.message : String(e));
+    if (e instanceof InProgressError) {
+      return fail('in_progress', `Action failed (ref ${requestId})`);
+    }
+    if (e instanceof RateLimitedError) {
+      return fail('rate_limited', `Rate limit exceeded for ${actionId}`);
+    }
+    // run_error → generic client message; full error logged keyed by requestId.
+    log.error(`action ${actionId} failed`, { requestId, error: e instanceof Error ? e.stack : String(e) });
+    return fail('run_error', `Action failed (ref ${requestId})`);
   }
-
-  await writeAudits(db, { requestId, userId: user.id, actionId, appId }, auditCalls);
-
-  if (idemKey) {
-    await db
-      .insert(idempotencyKeys)
-      .values({ key: `${actionId}:${idemKey}`, actionId, resultJson: JSON.stringify(data ?? null) })
-      .onConflictDoNothing();
-  }
-
-  await emit({ type: 'action.completed', actorId: user.id, appId, actionId });
-  return { status: 'ok', data };
 }
 
 /**
  * Approve or reject a pending request (called by platform.approve/reject actions
  * inside their own run()). Approval executes the original action AS THE
  * REQUESTER, bypassing the approval gate but re-running perm + idempotency.
+ * The whole decision + execution lives in the platform.approve transaction —
+ * approval_requests ends at 'executed' only if the run committed.
  */
 export async function decideApproval(
   ctx: InternalActionCtx,
@@ -305,35 +394,71 @@ export async function decideApproval(
   requirePerm(requester, action.perm);
   const input = JSON.parse(req.inputJson);
   const actionNoApproval = { ...action, approval: undefined };
-  const auditCalls: { entity: string; id: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null }[] = [];
   const reqApp = req.appId ? getApp(req.appId) : undefined;
-  const inner = buildCtx(db, requester, actionNoApproval, req.appId, requestId, reqApp?.dataMode ?? 'sandbox', auditCalls);
-  inner.approvedBy = ctx.user.id;
-  let data: unknown;
-  try {
-    data = await actionNoApproval.run(inner, input);
-  } catch (e) {
+
+  // Run the same transactional core inside this decision's outer transaction —
+  // one commit carries the status flip, the run, the audits, and the idem key.
+  const outcome = await executeCoreTx(db as DB, {
+    action: actionNoApproval,
+    requester,
+    input,
+    appId: req.appId,
+    dataMode: reqApp?.dataMode ?? 'sandbox',
+    requestId,
+    approvedBy: ctx.user.id,
+  });
+
+  if (outcome.kind === 'executed') {
     await db
       .update(approvalRequests)
-      .set({ status: 'failed' })
+      .set({ status: 'executed', resultJson: JSON.stringify(outcome.data ?? null) })
       .where(eq(approvalRequests.id, requestId));
-    throw e;
   }
-  await writeAudits(db, { requestId, userId: requester.id, actionId: req.actionId, appId: req.appId }, auditCalls);
-
-  const idem = action.idempotency?.(input);
-  if (idem) {
-    await db
-      .insert(idempotencyKeys)
-      .values({ key: `${req.actionId}:${idem}`, actionId: req.actionId, resultJson: JSON.stringify(data ?? null) })
-      .onConflictDoNothing();
-  }
-
-  await db
-    .update(approvalRequests)
-    .set({ status: 'executed', resultJson: JSON.stringify(data ?? null) })
-    .where(eq(approvalRequests.id, requestId));
 
   await emit({ type: 'action.completed', actorId: requester.id, appId: req.appId, actionId: req.actionId, payload: { approvedBy: ctx.user.id } });
-  return { decided: 'approved', result: data };
+  return { decided: 'approved', result: outcome.data };
+}
+
+/**
+ * The core steps factored for callers that already hold a transaction handle —
+ * decideApproval runs them inside the platform.approve transaction so claim,
+ * run, audits, and status='executed' are a single atomic commit.
+ */
+async function executeCoreTx(tx: DB, p: CoreParams): Promise<CoreOutcome> {
+  const idemKey = p.action.idempotency?.(p.input as never);
+  let claimedKey: string | null = null;
+  if (idemKey) {
+    claimedKey = `${p.action.id}:${idemKey}`;
+    const inserted = await tx
+      .insert(idempotencyKeys)
+      .values({ key: claimedKey, actionId: p.action.id, status: 'in_progress' })
+      .onConflictDoNothing()
+      .returning();
+    if (inserted.length === 0) {
+      const [existing] = await tx.select().from(idempotencyKeys).where(eq(idempotencyKeys.key, claimedKey)).limit(1);
+      if (existing?.status === 'completed' && existing.resultJson != null) {
+        return { kind: 'replayed', data: JSON.parse(existing.resultJson) };
+      }
+      throw new InProgressError();
+    }
+  }
+
+  if (p.action.rateLimit) {
+    await consumeRateLimit(tx, p.requester.id, p.action.id, p.action.rateLimit);
+  }
+
+  const auditCalls: AuditCall[] = [];
+  const inner = buildCtx(tx, p.requester, p.appId, p.requestId, p.dataMode, auditCalls, p.approvedBy);
+  const runCtx = p.action.internal ? inner : publicCtx(inner);
+  const data = await p.action.run(runCtx, p.input as never);
+
+  await writeAudits(tx, { requestId: p.requestId, userId: p.requester.id, actionId: p.action.id, appId: p.appId }, auditCalls);
+
+  if (claimedKey) {
+    await tx
+      .update(idempotencyKeys)
+      .set({ status: 'completed', resultJson: JSON.stringify(data ?? null) })
+      .where(eq(idempotencyKeys.key, claimedKey));
+  }
+  return { kind: 'executed', data };
 }
