@@ -109,6 +109,16 @@ describe('kyc app — happy paths', () => {
     expect(audit.status).toBe('ok');
   });
 
+  it('analyst claims then approves a low-risk case → approved + decidedBy u-analyst', async () => {
+    const id = await makeCase({ status: 'pending', riskScore: 'low' });
+    expect((await executeAction(analyst, 'kyc.claim', { id })).status).toBe('ok');
+    const res = await executeAction(analyst, 'kyc.approve', { id, reason: 'Docs verified' });
+    expect(res.status).toBe('ok');
+    const row = await getCase(id);
+    expect(row.status).toBe('approved');
+    expect(row.decidedBy).toBe('u-analyst');
+  });
+
   it('senior claims then approves a low-risk case → approved + decidedBy + note', async () => {
     const id = await makeCase({ status: 'pending', riskScore: 'low' });
     expect((await executeAction(senior, 'kyc.claim', { id })).status).toBe('ok');
@@ -219,9 +229,9 @@ describe('kyc redteam probes', () => {
     expect(audit.status).toBe('ok');
   });
 
-  it('B.3 permission: analyst lacks kyc.decide → permission_denied + audit', async () => {
-    const id = await makeCase({ status: 'in_review', assigneeId: 'u-analyst' });
-    const res = await executeAction(analyst, 'kyc.approve', { id });
+  it('B.3 permission: compliance_readonly lacks kyc.decide → permission_denied + audit', async () => {
+    const id = await makeCase({ status: 'in_review', assigneeId: 'u-compliance' });
+    const res = await executeAction(compliance, 'kyc.approve', { id });
     expect(res.status).toBe('failed');
     expect(res.status === 'failed' ? res.code : '').toBe('permission_denied');
     // Failed attempts are audited with entityId null, so filter by action only.
@@ -247,6 +257,17 @@ describe('kyc redteam probes', () => {
     expect(decide.status === 'failed' ? decide.code : '').toBe('permission_denied');
   });
 
+  it('B.3 claim is exclusive: claiming a case already held by someone else fails', async () => {
+    // ctx.records.claim rejects an already-assigned row unless the caller
+    // holds admin.manage — analysts get a hard failure, nothing changes hands.
+    const id = await makeCase({ status: 'pending', assigneeId: 'u-senior' });
+    const res = await executeAction(analyst, 'kyc.claim', { id });
+    expect(res.status).toBe('failed');
+    const row = await getCase(id);
+    expect(row.assigneeId).toBe('u-senior');
+    expect(row.status).toBe('pending');
+  });
+
   it('B.4 scope: team-scoped roles cannot see or act on another team’s cases', async () => {
     const id = await makeCase({ status: 'pending', teamId: 'other' });
     const analystView = await query({ db, user: analyst }, kycReviews, {
@@ -268,11 +289,10 @@ describe('kyc redteam probes', () => {
     expect((await getCase(id)).assigneeId).toBeNull();
   });
 
-  it('B.5 approval: high-risk decide by non-senior needs senior sign-off', async () => {
+  it('B.5 approval: high-risk decide by analyst needs senior sign-off in the Inbox', async () => {
     const id = await makeCase({ status: 'pending', riskScore: 'high' });
-    // engAdmin holds kyc.decide but is not a senior_reviewer.
-    expect((await executeAction(engAdmin, 'kyc.claim', { id })).status).toBe('ok');
-    const res = await executeAction(engAdmin, 'kyc.approve', { id, reason: 'looks fine' });
+    expect((await executeAction(analyst, 'kyc.claim', { id })).status).toBe('ok');
+    const res = await executeAction(analyst, 'kyc.approve', { id, reason: 'looks fine' });
     expect(res.status).toBe('needs_approval');
     const requestId = res.status === 'needs_approval' ? res.requestId : '';
     expect(requestId).toBeTruthy();
@@ -282,30 +302,35 @@ describe('kyc redteam probes', () => {
       .where(eq(approvalRequests.id, requestId));
     expect(req.status).toBe('pending');
     expect(req.actionId).toBe('kyc.approve');
+    expect(req.requesterId).toBe('u-analyst');
 
     // Requester cannot self-approve (notSelf).
-    const self = await executeAction(engAdmin, 'platform.approve', { requestId });
+    const self = await executeAction(analyst, 'platform.approve', { requestId });
     expect(self.status).toBe('failed');
-
-    // Friction #2 from APP_SPEC.md: senior_reviewer is the required approver
-    // role, but platform.approve itself needs the approvals.manage permission,
-    // which senior_reviewer does not hold — so the sign-off the spec asks for
-    // cannot actually be given. Asserted as the CURRENT (broken) behavior; do
-    // not fix — it needs a platform/roles change by engineering.
-    const seniorApprove = await executeAction(senior, 'platform.approve', { requestId });
-    expect(seniorApprove.status).toBe('failed');
-    expect(seniorApprove.status === 'failed' ? seniorApprove.code : '').toBe('permission_denied');
 
     // Finance holds approvals.manage but is not a senior_reviewer → role mismatch.
     const financeApprove = await executeAction(finance, 'platform.approve', { requestId });
     expect(financeApprove.status).toBe('failed');
 
+    // A senior_reviewer decides the request — the original action re-runs as
+    // the analyst and stamps decidedBy from ctx.approvedBy.
+    const decided = await executeAction(senior, 'platform.approve', { requestId });
+    expect(decided.status).toBe('ok');
     const [reqAfter] = await db
       .select()
       .from(approvalRequests)
       .where(eq(approvalRequests.id, requestId));
-    expect(reqAfter.status).toBe('pending');
-    expect((await getCase(id)).status).toBe('in_review');
+    expect(reqAfter.status).toBe('executed');
+    const row = await getCase(id);
+    expect(row.status).toBe('approved');
+    expect(row.decidedBy).toBe('u-senior');
+    expect(row.assigneeId).toBe('u-analyst');
+    const audit = await latestAudit('kyc.approve', id);
+    expect(audit.status).toBe('ok');
+
+    // A second non-senior approver cannot re-decide (also fails the role check).
+    const again = await executeAction(engAdmin, 'platform.approve', { requestId });
+    expect(again.status).toBe('failed');
   });
 
   it('B.5 senior decides a high-risk case directly — no approval needed', async () => {

@@ -10,11 +10,13 @@ customer with a reason. High-risk customers need a senior reviewer. Compliance c
 watch everything but change nothing.
 
 ## Who uses it
-- **analyst** — can: view the team's queue, claim a case (one analyst per case), add
-  notes, upload a resubmitted document, reopen a rejected case once for re-review.
-  *Today an analyst cannot press Approve/Reject* — see Open questions #1.
-- **senior_reviewer** — can: everything an analyst can, plus approve/reject cases
-  they have claimed, including high-risk ones; reveal masked personal fields.
+- **analyst** — can: view the team's queue, claim a case (one analyst per case),
+  approve/reject low- and medium-risk cases they have claimed, add notes, upload
+  a resubmitted document, reopen a rejected case once for re-review. High-risk
+  cases they decide are sent to a senior reviewer in the Inbox for sign-off.
+- **senior_reviewer** — can: everything an analyst can, plus decide any case
+  directly including high-risk ones, sign off analysts' high-risk requests in
+  the Inbox, and reveal masked personal fields.
 - **compliance_readonly** — can: view every case, note and document. Cannot claim,
   note, reveal, decide or reopen anything.
 - Who can see other people's items? Everyone on the KYC team sees the whole team
@@ -48,10 +50,10 @@ One line per button. Say who may press it and when it needs someone else's sign-
   someone else already holds it. Who: analyst, senior_reviewer (any KYC-team member
   who is not read-only). Needs approval when: never.
 - **Approve** — marks the case approved with an optional reason; only the person
-  who claimed the case can press it. Who: `kyc.decide` holders (senior_reviewer
-  today — Open question #1). Needs approval when: the case is **high risk** and the
-  presser is not a senior reviewer — a senior reviewer must sign off in the Inbox
-  (Open question #2). Low/medium-risk cases are decided immediately.
+  who claimed the case can press it. Who: analyst, senior_reviewer. Needs
+  approval when: the case is **high risk** and the presser is not a senior
+  reviewer — a senior reviewer signs off in the Inbox. Low/medium-risk cases
+  are decided immediately.
 - **Reject** — marks the case rejected with a required reason; only the person who
   claimed the case can press it. Who and sign-off: same rule as Approve.
 - **Reopen for re-review** — a rejected customer who has resubmitted a document goes
@@ -86,22 +88,16 @@ the risk score (it is stored on the case), deleting cases, re-assigning a case t
 someone else, more than one re-review, emailing customers.
 
 ## Open questions
-1. **Analysts cannot approve/reject today.** The request says "analysts … approve or
-   reject", but the `analyst` role does not hold `kyc.decide`
-   (`platform/policy/roles.ts`). I may not invent or grant permissions. As built,
-   Approve/Reject return `permission_denied` for analysts; only `senior_reviewer` and
-   `eng_admin` can decide. Engineering must add `kyc.decide` to `analyst` for the
-   "analyst decides, senior signs off on high risk" flow to work as asked.
-2. **Senior sign-off cannot be given in the Inbox.** High-risk decisions by a
-   non-senior create a "needs senior_reviewer" approval request, but deciding any
-   request requires the platform permission `approvals.manage`, which
-   `senior_reviewer` does not hold. Engineering must grant it (or let the platform
-   accept role-based approvers) — until then the request sits pending.
-3. **"Masked for everyone except the analyst who owns the case."** The platform
-   masks for everyone and only unmasks via the audited Reveal, which needs
-   `pii.reveal` — analysts do not have it. There is no "owner sees clear text"
-   option in the platform. As built: everyone sees masks; seniors/engineering can
-   reveal (audited). Owner-based reveal needs a platform change.
+1. **[resolved]** Analysts can now approve/reject — `kyc.decide` was granted to
+   `analyst` on the base branch (commit 1101cf7).
+2. **[resolved]** Senior sign-off now works — `senior_reviewer` was granted
+   `approvals.manage` on the base branch (commit 1101cf7), so Inbox requests
+   reach the required role.
+3. **[resolved by fallback]** "Masked for everyone except the analyst who owns
+   the case" is not supported by the platform: there is no ownership-scoped
+   unmask. The app falls back to the existing explicit, logged reveal path —
+   `platform.revealField` gated on `pii.reveal`, every reveal audited. Everyone
+   sees masks; `pii.reveal` holders (senior_reviewer, engineering) can reveal.
 4. **Who records a resubmission?** I assumed the analyst uploads the new document
    and presses "Reopen for re-review" on the customer's behalf.
 5. **Approve/reject after the 48 h flag** is still allowed — the flag is a warning,

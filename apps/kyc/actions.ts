@@ -111,7 +111,7 @@ export const approve = defineAction({
       throw new Error('Only the analyst who claimed this case can decide it');
     }
     if (row.riskScore === 'high' && !ctx.approvedBy && ctx.user.role !== 'senior_reviewer') {
-      throw new Error('High-risk cases need a senior reviewer');
+      throw new Error('High-risk cases need a senior reviewer sign-off');
     }
     const updated = await kycFlow.transition(ctx, kycReviews, i.id, 'approved');
     await ctx.records.update(kycReviews, i.id, {
@@ -149,7 +149,7 @@ export const reject = defineAction({
       throw new Error('Only the analyst who claimed this case can decide it');
     }
     if (row.riskScore === 'high' && !ctx.approvedBy && ctx.user.role !== 'senior_reviewer') {
-      throw new Error('High-risk cases need a senior reviewer');
+      throw new Error('High-risk cases need a senior reviewer sign-off');
     }
     const updated = await kycFlow.transition(ctx, kycReviews, i.id, 'rejected');
     await ctx.records.update(kycReviews, i.id, {
