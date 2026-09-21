@@ -1,7 +1,7 @@
 import { and, eq, getTableColumns, getTableName, isNull } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { SeedUser } from '@platform/policy/roles';
-import { can } from '@platform/rbac/rbac';
+import { can, scopePredicate } from '@platform/rbac/rbac';
 import type { DB } from '@platform/data/client';
 import { maskRow } from '@platform/data/query';
 import { notes } from '@platform/data/schema';
@@ -32,6 +32,8 @@ function idCol(t: PgTable): never {
 
 export interface RecordsApi {
   get(table: PgTable, id: string | number): Promise<Row | null>;
+  /** SELECT … FOR UPDATE — row must be visible under the caller's scope. */
+  lock(table: PgTable, id: string | number): Promise<Row>;
   insert(table: PgTable, values: Row): Promise<Row>;
   update(table: PgTable, id: string | number, patch: Row): Promise<Row>;
   remove(table: PgTable, id: string | number): Promise<void>;
@@ -39,34 +41,68 @@ export interface RecordsApi {
   assign(table: PgTable, id: string | number, userId: string): Promise<Row>;
   release(table: PgTable, id: string | number): Promise<Row>;
   addNote(entity: string, entityId: string, body: string): Promise<Row>;
+  /** Throws not_found unless the parent row is visible + not soft-deleted. */
+  requireParentRow(entity: string, entityId: string): Promise<void>;
+}
+
+export class NotFoundError extends Error {
+  constructor(entity: string, id: string | number) {
+    super(`${entity} row ${id} not found`);
+    this.name = 'not_found';
+  }
 }
 
 /**
  * Auto-audited record helpers — the only way action code touches rows.
- * Every insert/update/remove fetches before, applies, fetches after, and
- * queues an audit call (written by executeAction, masked before storage).
+ * Every id-addressed operation first verifies the row is visible under the
+ * caller's row-scope AND not soft-deleted; otherwise it fails with not_found
+ * (same shape as a genuinely missing row — no existence oracle).
+ * Every insert/update/remove queues a masked audit call.
  */
 export function makeRecords(deps: RecordsDeps): RecordsApi {
   const { db, user, reveal, auditPush } = deps;
   const tn = (t: PgTable) => getTableName(t);
 
-  async function get(table: PgTable, id: string | number): Promise<Row | null> {
+  /** Row must exist, be in scope, and not soft-deleted. */
+  async function getRawScoped(table: PgTable, id: string | number): Promise<Row | null> {
+    const clauses = [eq(idCol(table), id as never)];
+    const c = cols(table);
+    if (c['deletedAt']) clauses.push(isNull(c['deletedAt'] as never));
+    const scoped = scopePredicate(user, table);
+    if (scoped) clauses.push(scoped);
     const rows = (await db
       .select()
       .from(table as never)
-      .where(eq(idCol(table), id as never))
+      .where(and(...clauses))
       .limit(1)) as Row[];
-    const r = rows[0];
+    return rows[0] ?? null;
+  }
+
+  async function requireRow(table: PgTable, id: string | number): Promise<Row> {
+    const row = await getRawScoped(table, id);
+    if (!row) throw new NotFoundError(tn(table), id);
+    return row;
+  }
+
+  async function get(table: PgTable, id: string | number): Promise<Row | null> {
+    const r = await getRawScoped(table, id);
     return r ? maskRow(tn(table), r, reveal) : null;
   }
 
-  async function getRaw(table: PgTable, id: string | number): Promise<Row | null> {
+  async function lock(table: PgTable, id: string | number): Promise<Row> {
+    const clauses = [eq(idCol(table), id as never)];
+    const c = cols(table);
+    if (c['deletedAt']) clauses.push(isNull(c['deletedAt'] as never));
+    const scoped = scopePredicate(user, table);
+    if (scoped) clauses.push(scoped);
     const rows = (await db
       .select()
       .from(table as never)
-      .where(eq(idCol(table), id as never))
+      .where(and(...clauses))
+      .for('update')
       .limit(1)) as Row[];
-    return rows[0] ?? null;
+    if (!rows[0]) throw new NotFoundError(tn(table), id);
+    return rows[0];
   }
 
   async function insert(table: PgTable, values: Row): Promise<Row> {
@@ -80,8 +116,7 @@ export function makeRecords(deps: RecordsDeps): RecordsApi {
   }
 
   async function update(table: PgTable, id: string | number, patch: Row): Promise<Row> {
-    const before = await getRaw(table, id);
-    if (!before) throw new Error(`${tn(table)} row ${id} not found`);
+    const before = await requireRow(table, id);
     const updated = (await db
       .update(table as never)
       .set(patch as never)
@@ -93,8 +128,7 @@ export function makeRecords(deps: RecordsDeps): RecordsApi {
   }
 
   async function remove(table: PgTable, id: string | number): Promise<void> {
-    const before = await getRaw(table, id);
-    if (!before) throw new Error(`${tn(table)} row ${id} not found`);
+    const before = await requireRow(table, id);
     const c = cols(table);
     if (c['deletedAt']) {
       await db
@@ -109,8 +143,7 @@ export function makeRecords(deps: RecordsDeps): RecordsApi {
   }
 
   async function claim(table: PgTable, id: string | number): Promise<Row> {
-    const row = await getRaw(table, id);
-    if (!row) throw new Error(`${tn(table)} row ${id} not found`);
+    const row = await requireRow(table, id);
     const current = row['assigneeId'] ?? row['assignee_id'];
     if (current && current !== user.id && !can(user, 'approvals.manage')) {
       throw new Error(`Row ${id} is already assigned to ${current}`);
@@ -127,6 +160,8 @@ export function makeRecords(deps: RecordsDeps): RecordsApi {
   }
 
   async function addNote(entity: string, entityId: string, body: string): Promise<Row> {
+    // Notes attach to a real row the caller can see — otherwise not_found.
+    await requireParentRow(entity, entityId);
     const inserted = (await db
       .insert(notes)
       .values({ appId: deps.appId ?? '_platform', entity, entityId, authorId: user.id, body })
@@ -136,7 +171,19 @@ export function makeRecords(deps: RecordsDeps): RecordsApi {
     return row;
   }
 
-  return { get, insert, update, remove, claim, assign, release, addNote };
+  /**
+   * The parent row must be visible under the caller's scope and not
+   * soft-deleted. Throws not_found otherwise — indistinguishable from a
+   * missing row. `requireRow` resolves the table from the registry.
+   */
+  async function requireParentRow(entity: string, entityId: string): Promise<void> {
+    const { getSchemaTable } = await import('@platform/registry');
+    const table = getSchemaTable(entity);
+    if (!table) throw new NotFoundError(entity, entityId);
+    await requireRow(table, entityId);
+  }
+
+  return { get, lock, insert, update, remove, claim, assign, release, addNote, requireParentRow };
 }
 
 /** Deleted-row filter shared by query(): true if table has a deletedAt column. */
