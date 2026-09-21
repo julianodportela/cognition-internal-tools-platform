@@ -145,7 +145,7 @@ export function makeRecords(deps: RecordsDeps): RecordsApi {
   async function claim(table: PgTable, id: string | number): Promise<Row> {
     const row = await requireRow(table, id);
     const current = row['assigneeId'] ?? row['assignee_id'];
-    if (current && current !== user.id && !can(user, 'approvals.manage')) {
+    if (current && current !== user.id && !can(user, 'admin.manage')) {
       throw new Error(`Row ${id} is already assigned to ${current}`);
     }
     return update(table, id, { assigneeId: user.id });
