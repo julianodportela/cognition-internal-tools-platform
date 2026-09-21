@@ -56,7 +56,7 @@ export const roles: Record<RoleId, RoleDef> = {
     scope: 'all',
   },
   support_agent: {
-    permissions: ['refunds.read', 'flags.read', 'template.read'],
+    permissions: ['refunds.read', 'refunds.issue', 'flags.read', 'template.read'],
     scope: 'own',
   },
   finance_approver: {

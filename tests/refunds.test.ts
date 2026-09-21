@@ -90,6 +90,8 @@ describe('refunds app — happy paths', () => {
     expect(req.status).toBe('executed');
     const [row] = await db.select().from(refunds).where(eq(refunds.transactionId, txnId));
     expect(row.status).toBe('issued');
+    // ctx.approvedBy is stamped by decideApproval — the refund records who signed off.
+    expect(row.approverId).toBe('u-finance');
 
     // Second approve of the same request fails (B.5 double-decide).
     const again = await executeAction(finance, 'platform.approve', { requestId });
@@ -98,11 +100,25 @@ describe('refunds app — happy paths', () => {
 });
 
 describe('refunds redteam probes', () => {
-  it('B.3 permission: support lacks refunds.issue → permission_denied + audit', async () => {
-    const txnId = await makeTxn({ amountCents: 1_000 });
+  it('support can now request a refund under $100 (perm granted)', async () => {
+    const txnId = await makeTxn({ amountCents: 2_500 });
     const res = await executeAction(support, 'refunds.request', {
       transactionId: txnId,
-      reason: 'Support attempt',
+      reason: 'Support refund',
+    });
+    expect(res.status).toBe('ok');
+    const [row] = await db.select().from(refunds).where(eq(refunds.transactionId, txnId));
+    expect(row.status).toBe('issued');
+    expect(row.requesterId).toBe('u-support');
+    // Under the threshold: executed directly, no approver.
+    expect(row.approverId).toBeNull();
+  });
+
+  it('B.3 permission: analyst lacks refunds.issue → permission_denied + audit', async () => {
+    const txnId = await makeTxn({ amountCents: 1_000 });
+    const res = await executeAction(analyst, 'refunds.request', {
+      transactionId: txnId,
+      reason: 'Analyst attempt',
     });
     expect(res.status).toBe('failed');
     expect(res.status === 'failed' ? res.code : '').toBe('permission_denied');
@@ -179,8 +195,8 @@ describe('refunds redteam probes', () => {
     const { rows } = await query({ db, user: finance }, transactions, { limit: 5 });
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) {
-      expect(String(r.customerEmail)).not.toContain('@example.test');
-      expect(String(r.customerEmail).startsWith('••••')).toBe(true);
+      // Emails mask to ••••@domain; other values keep the ••••last4 form.
+      expect(String(r.customerEmail)).toBe('••••@example.test');
       expect(String(r.cardLast4)).not.toMatch(/^\d{4}$/);
       expect(String(r.cardLast4).startsWith('••••')).toBe(true);
     }

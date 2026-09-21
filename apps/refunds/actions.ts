@@ -66,6 +66,7 @@ export const request = defineAction({
       reason: i.reason,
       status: result.status === 'submitted' ? 'issued' : 'failed',
       requesterId: ctx.user.id,
+      approverId: ctx.approvedBy ?? null,
       processorRef: result.refundId,
     });
     await ctx.records.update(transactions, i.transactionId, { status: 'refunded' });

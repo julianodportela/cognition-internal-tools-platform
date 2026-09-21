@@ -61,9 +61,7 @@ deleting transactions, issuing refunds by customer rather than by transaction,
 and exports/reports.
 
 ## Open questions
-- The requester said "support agents request refunds", but the `refunds.issue`
-  permission is not granted to the `support_agent` role in
-  `platform/policy/roles.ts` — only finance_approver and eng_* hold it. As built,
-  a support agent pressing "Request refund" gets permission_denied. Engineering
-  must add `refunds.issue` to `support_agent` (a reviewed platform change).
+- ~~The requester said "support agents request refunds", but the `refunds.issue`
+  permission is not granted to the `support_agent` role~~ — **resolved:** engineering
+  granted `refunds.issue` to `support_agent` in `platform/policy/roles.ts`.
 </content>

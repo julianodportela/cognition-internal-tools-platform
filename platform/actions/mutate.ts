@@ -308,6 +308,7 @@ export async function decideApproval(
   const auditCalls: { entity: string; id: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null }[] = [];
   const reqApp = req.appId ? getApp(req.appId) : undefined;
   const inner = buildCtx(db, requester, actionNoApproval, req.appId, requestId, reqApp?.dataMode ?? 'sandbox', auditCalls);
+  inner.approvedBy = ctx.user.id;
   let data: unknown;
   try {
     data = await actionNoApproval.run(inner, input);

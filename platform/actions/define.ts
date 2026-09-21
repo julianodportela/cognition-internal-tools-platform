@@ -25,6 +25,12 @@ export type ApprovalPolicy =
 
 export interface ActionCtx {
   user: SeedUser;
+  /**
+   * Id of the approver who decided the request, when this action is executing
+   * inside decideApproval. Undefined for direct (non-approved) execution —
+   * stamp approval-dependent columns with `ctx.approvedBy ?? null`.
+   */
+  approvedBy?: string;
   query(table: PgTable, opts?: QueryOptions): Promise<QueryResult>;
   aggregate(table: PgTable, opts?: AggregateOptions): Promise<Record<string, unknown>[]>;
   records: RecordsApi;
