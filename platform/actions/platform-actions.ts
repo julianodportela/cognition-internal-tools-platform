@@ -201,7 +201,7 @@ export const getAttachmentUrl = defineInternalAction({
 
 export const approve = defineInternalAction({
   id: 'platform.approve',
-  perm: 'approvals.manage', // additional per-policy check inside
+  perm: 'approvals.decide', // broad gate; canDecide does the per-request check inside
   risk: 'low',
   input: z.object({ requestId: s64() }),
   run: async (ctx, i) => {
@@ -212,7 +212,7 @@ export const approve = defineInternalAction({
 
 export const reject = defineInternalAction({
   id: 'platform.reject',
-  perm: 'approvals.manage',
+  perm: 'approvals.decide',
   risk: 'low',
   input: z.object({ requestId: s64(), reason: z.string().max(1000).optional() }),
   run: async (ctx, i) => {

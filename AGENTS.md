@@ -95,6 +95,9 @@ Do not add `eslint-disable`; the fix is to use the platform primitive instead.
    when?)`). Only mark `risk: 'low'` for reads-like or reversible writes (create draft,
    add note, claim). Predicates receive `(input, ctx)` — decide from the **row**
    (`ctx.records.get`), never from client input. Missing row ⇒ require approval.
+   Inbox deciding (`platform.approve`/`platform.reject`) needs `approvals.decide`;
+   eligibility per request = holds the action's perm (dualControl) or the required
+   role (requiresRole); `approvals.manage` = override for any dualControl request.
 7. **Money/external actions** are `tags: ['money', 'external']`, have an `idempotency`
    key and a `rateLimit`.
 8. **Inputs carry IDs, not PII.** Action inputs must not contain fields named in the

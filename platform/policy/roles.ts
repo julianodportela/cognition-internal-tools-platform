@@ -4,6 +4,7 @@ export const permissions = [
   // platform
   'pii.reveal',
   'audit.read',
+  'approvals.decide', // may act on Inbox requests they are eligible for per canDecide
   'approvals.manage',
   'admin.manage',
   // kyc
@@ -44,11 +45,11 @@ export interface RoleDef {
 
 export const roles: Record<RoleId, RoleDef> = {
   analyst: {
-    permissions: ['kyc.read', 'kyc.decide', 'refunds.read', 'flags.read', 'template.read', 'template.write'],
+    permissions: ['kyc.read', 'kyc.decide', 'refunds.read', 'flags.read', 'approvals.decide', 'template.read', 'template.write'],
     scope: 'own',
   },
   senior_reviewer: {
-    permissions: ['kyc.read', 'kyc.decide', 'kyc.decide_high_risk', 'pii.reveal', 'approvals.manage', 'template.read', 'template.write'],
+    permissions: ['kyc.read', 'kyc.decide', 'kyc.decide_high_risk', 'pii.reveal', 'approvals.decide', 'template.read', 'template.write'],
     scope: 'team',
   },
   compliance_readonly: {
@@ -56,16 +57,16 @@ export const roles: Record<RoleId, RoleDef> = {
     scope: 'all',
   },
   support_agent: {
-    permissions: ['refunds.read', 'refunds.issue', 'flags.read', 'template.read'],
+    permissions: ['refunds.read', 'refunds.issue', 'flags.read', 'approvals.decide', 'template.read'],
     scope: 'own',
   },
   finance_approver: {
-    permissions: ['refunds.read', 'refunds.issue', 'refunds.approve', 'audit.read', 'approvals.manage', 'template.read', 'template.approve'],
+    permissions: ['refunds.read', 'refunds.issue', 'refunds.approve', 'audit.read', 'approvals.decide', 'approvals.manage', 'template.read', 'template.approve'],
     scope: 'all',
   },
   eng_dev: {
     permissions: [
-      'audit.read', 'pii.reveal',
+      'audit.read', 'pii.reveal', 'approvals.decide',
       'kyc.read', 'refunds.read', 'refunds.issue',
       'flags.read', 'flags.toggle',
       'template.read', 'template.write', 'template.approve',
@@ -74,7 +75,7 @@ export const roles: Record<RoleId, RoleDef> = {
   },
   eng_admin: {
     permissions: [
-      'audit.read', 'pii.reveal', 'approvals.manage', 'admin.manage',
+      'audit.read', 'pii.reveal', 'approvals.decide', 'approvals.manage', 'admin.manage',
       'kyc.read', 'kyc.decide', 'kyc.decide_high_risk',
       'refunds.read', 'refunds.issue', 'refunds.approve',
       'flags.read', 'flags.toggle', 'flags.prod.toggle',
