@@ -1,64 +1,23 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import type { ZodObject, ZodRawShape } from 'zod';
-import { z } from 'zod';
 import { Button, Input, Select } from './primitives';
+import type { FieldDef } from './fields';
 import { runAction } from '@platform/actions/run-action';
 import type { MutateResult } from '@platform/actions/define';
 
-export interface FieldDef {
-  name: string;
-  label: string;
-  type: 'text' | 'number' | 'select' | 'checkbox';
-  options?: { value: string; label: string }[];
-  required?: boolean;
-}
-
-function zodKind(t: z.ZodType): FieldDef['type'] {
-  let inner: z.ZodType = t;
-  // unwrap optional/nullable/default
-  for (;;) {
-    const def = (inner as z.ZodType & { _def: { type?: string; innerType?: z.ZodType } })._def;
-    if (def.type === 'optional' || def.type === 'nullable' || def.type === 'default' || def.type === 'readonly') {
-      inner = def.innerType as z.ZodType;
-      continue;
-    }
-    if (def.type === 'number' || def.type === 'int') return 'number';
-    if (def.type === 'boolean') return 'checkbox';
-    if (def.type === 'enum') return 'select';
-    return 'text';
-  }
-}
-
-export function fieldsFromSchema(schema: ZodObject<ZodRawShape>): FieldDef[] {
-  const shape = schema.shape;
-  return Object.entries(shape).map(([name, t]) => {
-    const def = (t as z.ZodType & { _def: { type?: string; values?: string[] } })._def;
-    const type = zodKind(t as z.ZodType);
-    const required = def.type !== 'optional' && def.type !== 'default';
-    const options =
-      type === 'select' && def.values
-        ? (def.values as string[]).map((v) => ({ value: v, label: v }))
-        : undefined;
-    return { name, label: name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), type, options, required };
-  });
-}
-
 export function ActionForm({
   actionId,
-  schema,
   fields,
   submitLabel = 'Submit',
   onDone,
 }: {
   actionId: string;
-  schema?: ZodObject<ZodRawShape>;
-  fields?: FieldDef[];
+  fields: FieldDef[];
   submitLabel?: string;
   onDone?: (res: MutateResult) => void;
 }) {
-  const defs = fields ?? (schema ? fieldsFromSchema(schema) : []);
+  const defs = fields;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<{ tone: 'ok' | 'err' | 'info'; text: string } | null>(null);
   const [pending, startTransition] = useTransition();

@@ -63,7 +63,7 @@ if (fs.existsSync(appsDir)) {
 }
 
 for (const entry of fs.readdirSync(ROOT, { withFileTypes: true })) {
-  if (entry.name.startsWith('node_modules') || entry.name === '.git' || entry.name === '.data' || entry.name === '.next' || entry.name === '.nvm') continue;
+  if (entry.name.startsWith('node_modules') || entry.name === '.git' || entry.name === '.data' || entry.name === '.next' || entry.name === '.nvm' || entry.name === 'test-results' || entry.name === 'playwright-report') continue;
   if (entry.isDirectory()) {
     if (!ALLOWED_TOP.has(entry.name) && !entry.name.startsWith('.')) {
       fail(`top-level directory '${entry.name}/' not in allowlist`);

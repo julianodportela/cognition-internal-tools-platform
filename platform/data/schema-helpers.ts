@@ -1,7 +1,6 @@
 import {
   pgTable,
   type PgColumnBuilderBase,
-  type TableConfig,
 } from 'drizzle-orm/pg-core';
 import { getTableName } from 'drizzle-orm';
 import { sensitiveFieldNames } from '@platform/policy/sensitive-fields';
@@ -28,19 +27,21 @@ export function sensitive<T extends PgColumnBuilderBase>(col: T): T {
 }
 
 /** pgTable wrapper that registers columns wrapped in sensitive(). */
-export function platformTable<T extends TableConfig>(
+export function platformTable<T extends Record<string, PgColumnBuilderBase>>(
   name: string,
-  cols: T extends TableConfig ? Record<string, PgColumnBuilderBase> : never,
+  cols: T,
   extra?: never,
 ) {
-  for (const [key, builder] of Object.entries(
-    cols as Record<string, PgColumnBuilderBase>,
-  )) {
+  for (const [key, builder] of Object.entries(cols)) {
     if (markedBuilders.has(builder)) {
-      sensitiveColumns.add(`${name}.${builderNames.get(builder) ?? key}`);
+      // Register both the db column name and the JS property key — rows come
+      // back from drizzle with camelCase keys while callers may use either.
+      const dbName = builderNames.get(builder) ?? key;
+      sensitiveColumns.add(`${name}.${dbName}`);
+      if (dbName !== key) sensitiveColumns.add(`${name}.${key}`);
     }
   }
-  return pgTable(name, cols as never, extra as never);
+  return pgTable(name, cols, extra as never);
 }
 
 const policyNames = new Set<string>(sensitiveFieldNames);

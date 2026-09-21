@@ -31,6 +31,7 @@ const ALLOWED_IMPORTS = [
   '@platform/workflow',
   '@platform/data/read',
   '@platform/data/schema-helpers',
+  '@platform/actions/run-action',
   'zod',
   'react',
 ];
@@ -208,7 +209,7 @@ const rules = {
             if (source === 'next/navigation') {
               for (const s of n.specifiers) {
                 if (s.type === 'ImportSpecifier') {
-                  if (!['redirect', 'notFound'].includes(s.imported.name)) {
+                  if (!['redirect', 'notFound', 'useRouter'].includes(s.imported.name)) {
                     context.report({ node: s, message: `Only { redirect, notFound } may be imported from next/navigation.${SUFFIX}` });
                   }
                 } else {
@@ -223,6 +224,8 @@ const rules = {
               }
               return;
             }
+            // drizzle imports are policed by no-raw-db (operator allowlist; pg-core only in schema.ts)
+            if (source === 'drizzle-orm' || source === 'drizzle-orm/pg-core') return;
             if (ALLOWED_IMPORTS.some((a) => source === a || source.startsWith(a + '/'))) return;
             context.report({ node: n, message: `Import '${source}' is not on the app allowlist (${ALLOWED_IMPORTS.join(', ')}, next/link, next/navigation{redirect,notFound}).${SUFFIX}` });
           });

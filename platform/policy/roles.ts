@@ -44,7 +44,7 @@ export interface RoleDef {
 
 export const roles: Record<RoleId, RoleDef> = {
   analyst: {
-    permissions: ['kyc.read', 'refunds.read', 'flags.read', 'template.read'],
+    permissions: ['kyc.read', 'refunds.read', 'flags.read', 'template.read', 'template.write'],
     scope: 'own',
   },
   senior_reviewer: {
@@ -60,7 +60,7 @@ export const roles: Record<RoleId, RoleDef> = {
     scope: 'own',
   },
   finance_approver: {
-    permissions: ['refunds.read', 'refunds.issue', 'refunds.approve', 'audit.read'],
+    permissions: ['refunds.read', 'refunds.issue', 'refunds.approve', 'audit.read', 'approvals.manage', 'template.read', 'template.approve'],
     scope: 'all',
   },
   eng_dev: {

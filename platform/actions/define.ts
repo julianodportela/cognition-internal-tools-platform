@@ -5,6 +5,7 @@ import type { QueryOptions, QueryResult, AggregateOptions } from '@platform/data
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { Integrations } from '@platform/integrations';
 import type { RecordsApi } from '@platform/records';
+import type { AppManifest } from '@platform/registry';
 
 export type ApprovalPolicy =
   | { kind: 'dualControl'; when?: (input: unknown) => boolean }
@@ -48,6 +49,8 @@ export interface ActionDef<I = any, O = any> {
   appId?: string;
   /** Skip in the audit-completeness guard test; value is the justification. */
   guardSkip?: string;
+  /** Guard-test helper: produce a valid input (e.g. referencing a seeded row). */
+  guardFixture?: (helpers: { db: DB }) => I | Promise<I>;
   run(ctx: ActionCtx, input: I): Promise<O>;
 }
 
@@ -67,11 +70,18 @@ export interface ActionOpts<I, O> {
   rateLimit?: { max: number; windowSeconds: number };
   tags?: ('money' | 'external')[];
   appId?: string;
+  guardSkip?: string;
+  guardFixture?: (helpers: { db: DB }) => I | Promise<I>;
   run(ctx: ActionCtx, input: I): Promise<O>;
 }
 
 export function defineAction<I, O>(opts: ActionOpts<I, O>): ActionDef<I, O> {
   return { risk: 'high', ...opts };
+}
+
+/** App-code entry point for declaring a manifest (identity fn with type). */
+export function defineApp(m: AppManifest): AppManifest {
+  return m;
 }
 
 export type MutateResult =

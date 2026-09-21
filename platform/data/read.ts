@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { SQL } from 'drizzle-orm';
-import { eq } from 'drizzle-orm';
+import { and, eq, asc } from 'drizzle-orm';
+import { notes, attachments } from './schema';
 import { getCurrentUser } from '@platform/auth/provider';
 import { requirePerm } from '@platform/rbac/rbac';
 import { getApp } from '@platform/registry';
@@ -15,6 +16,10 @@ export interface ReadCtx {
   app: AppManifest;
   query(table: PgTable, opts?: QueryOptions): Promise<QueryResult>;
   aggregate(table: PgTable, opts?: AggregateOptions): Promise<Record<string, unknown>[]>;
+  /** Notes attached to an entity (platform table — apps can't import its schema). */
+  listNotes(entity: string, entityId: string): Promise<Record<string, unknown>[]>;
+  /** Attachments attached to an entity. */
+  listAttachments(entity: string, entityId: string): Promise<Record<string, unknown>[]>;
 }
 
 /**
@@ -35,6 +40,18 @@ export async function getReadCtx(appId: string): Promise<ReadCtx> {
     app,
     query: (t, o) => query(ctx, t, o),
     aggregate: (t, o) => aggregate(ctx, t, o),
+    listNotes: (entity, entityId) =>
+      db
+        .select()
+        .from(notes)
+        .where(and(eq(notes.appId, appId), eq(notes.entity, entity), eq(notes.entityId, entityId)))
+        .orderBy(asc(notes.createdAt)),
+    listAttachments: (entity, entityId) =>
+      db
+        .select()
+        .from(attachments)
+        .where(and(eq(attachments.appId, appId), eq(attachments.entity, entity), eq(attachments.entityId, entityId)))
+        .orderBy(asc(attachments.createdAt)),
   };
 }
 

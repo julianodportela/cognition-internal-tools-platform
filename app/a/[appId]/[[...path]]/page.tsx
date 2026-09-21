@@ -7,12 +7,15 @@ import { PageHeader } from '@platform/ui/primitives';
 
 export default async function AppDispatch({
   params,
+  searchParams,
 }: {
   params: Promise<{ appId: string; path?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
   const { appId, path = [] } = await params;
+  const sp = await searchParams;
   const app = getApp(appId);
   if (!app) notFound();
   if (!can(user, app.permission)) {
@@ -28,7 +31,12 @@ export default async function AppDispatch({
   if (!Page) notFound();
   return (
     <AppShell sandbox={app.dataMode === 'sandbox'}>
-      <Page subpath={path} />
+      <Page
+        subpath={path}
+        searchParams={Object.fromEntries(
+          Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
+        )}
+      />
     </AppShell>
   );
 }

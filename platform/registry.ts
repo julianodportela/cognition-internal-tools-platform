@@ -4,6 +4,7 @@ import type { ActionDef } from '@platform/actions/define';
 import { platformActions } from '@platform/actions/platform-actions';
 import { platformSchema } from '@platform/data/schema';
 import { appManifests } from '@apps/index';
+import { templateManifest } from '../templates/app/manifest';
 import type { DataMode } from '@platform/data/client';
 import type { Permission } from '@platform/policy/roles';
 
@@ -16,8 +17,17 @@ export interface AppManifest {
   dataClass: 'internal' | 'sensitive';
   nav?: { label: string; path: string }[];
   sources?: string[];
+  kind?: 'app' | 'template';
+  /** Synthetic rows loaded into the sandbox db at first init. */
+  fixtures?: Record<string, Record<string, unknown>[]>;
   schema: Record<string, PgTable>;
-  pages: Record<string, ComponentType<{ subpath: string[] }>>;
+  pages: Record<
+    string,
+    ComponentType<{
+      subpath: string[];
+      searchParams: Record<string, string | undefined>;
+    }>
+  >;
   actions: ActionDef[];
 }
 
@@ -40,8 +50,8 @@ registerSchemaTables(platformSchema as unknown as Record<string, unknown>);
 for (const a of platformActions) actions.set(a.id, a);
 
 function ensureLoaded() {
-  if (apps.size === 0 && appManifests.length > 0) {
-    for (const m of appManifests) {
+  if (apps.size === 0) {
+    for (const m of [...appManifests, templateManifest]) {
       apps.set(m.id, m);
       registerSchemaTables(m.schema as unknown as Record<string, unknown>);
       for (const a of m.actions) {

@@ -27,6 +27,7 @@ export async function AppShell({
             <li key={a.id}>
               <Link className="block rounded px-2 py-1 hover:bg-slate-200" href={`/a/${a.id}`}>
                 {a.icon} {a.name}
+                {a.kind === 'template' && <span className="ml-1 text-xs text-slate-400">· template</span>}
               </Link>
             </li>
           ))}

@@ -2,13 +2,15 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { Button } from './primitives';
+import { Button, StatusBadge } from './primitives';
 import { runAction } from '@platform/actions/run-action';
 
 export interface ColumnDef {
   key: string;
   label: string;
   sensitive?: boolean;
+  /** Serializable cell formats — safe across the server→client boundary. */
+  format?: 'money' | 'date' | 'status';
   render?: (v: unknown) => React.ReactNode;
 }
 
@@ -91,6 +93,9 @@ export function DataTableClient({
         </span>
       );
     }
+    if (c.format === 'money') return `$${(Number(v) / 100).toFixed(2)}`;
+    if (c.format === 'date') return v ? new Date(String(v)).toLocaleDateString() : '—';
+    if (c.format === 'status') return <StatusBadge status={String(v)} />;
     if (c.render) return c.render(v);
     return v == null ? '—' : String(v);
   };

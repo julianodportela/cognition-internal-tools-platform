@@ -6,7 +6,7 @@ import { can } from '@platform/rbac/rbac';
 import { getDb } from '@platform/data/client';
 import { auditLog } from '@platform/data/schema';
 import { query } from '@platform/data/query';
-import { PageHeader, StatusBadge } from '@platform/ui/primitives';
+import { PageHeader } from '@platform/ui/primitives';
 import { DataTable } from '@platform/ui/data-table-server';
 import { recentEvents } from '@platform/events';
 
@@ -83,7 +83,7 @@ export default async function AuditPage({
           { key: 'actionId', label: 'Action' },
           { key: 'entity', label: 'Entity' },
           { key: 'entityId', label: 'Entity ID' },
-          { key: 'status', label: 'Status', render: (v) => <StatusBadge status={String(v)} /> },
+          { key: 'status', label: 'Status', format: 'status' },
           { key: 'beforeJson', label: 'Before' },
           { key: 'afterJson', label: 'After' },
         ]}

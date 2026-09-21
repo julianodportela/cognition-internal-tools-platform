@@ -36,6 +36,12 @@ async function create(mode: DataMode): Promise<DB> {
     migrationsFolder: path.join(process.cwd(), 'drizzle'),
   });
   await seed(db);
+  // App fixtures are synthetic — sandbox connections only, idempotent.
+  const { getApps } = await import('@platform/registry');
+  const { loadFixtures } = await import('./fixtures');
+  for (const app of getApps()) {
+    await loadFixtures(app, db, mode);
+  }
   return db;
 }
 
