@@ -73,7 +73,7 @@ describe('template app end-to-end', () => {
     expect((await executeAction(analyst, 'template.claim', { id })).status).toBe('ok');
 
     // Low amount: dualControl predicate false → executes immediately.
-    const approved = await executeAction(engAdmin, 'template.approve', { id, amountCents: 12_345 });
+    const approved = await executeAction(engAdmin, 'template.approve', { id });
     expect(approved.status).toBe('ok');
 
     // pay is dualControl() unconditionally → needs_approval.
@@ -94,17 +94,17 @@ describe('template app end-to-end', () => {
   });
 
   it('approve over $500 routes through an approval request decided by finance', async () => {
-    const [submitted] = await db
-      .select()
-      .from(expenseRequests)
-      .where(eq(expenseRequests.status, 'submitted'))
-      .limit(1);
+    // Make a deterministic submitted row over the $500 threshold.
+    const created = await executeAction(analyst, 'template.create', {
+      title: 'Big expense',
+      amountCents: 80_000,
+      employeeEmail: 'big@example.test',
+    });
+    const id = created.status === 'ok' ? (created.data as { id: string }).id : '';
+    await executeAction(analyst, 'template.submit', { id });
     // The requester must hold template.approve themselves (perm check precedes
     // the approval gate), so engDev files and finance decides.
-    const res = await executeAction(engDev, 'template.approve', {
-      id: submitted.id,
-      amountCents: 80_000,
-    });
+    const res = await executeAction(engDev, 'template.approve', { id });
     expect(res.status).toBe('needs_approval');
     const requestId = res.status === 'needs_approval' ? res.requestId : '';
 
@@ -116,8 +116,21 @@ describe('template app end-to-end', () => {
     expect(decided.status).toBe('ok');
     const [req] = await db.select().from(approvalRequests).where(eq(approvalRequests.id, requestId));
     expect(req.status).toBe('executed');
-    const [row] = await db.select().from(expenseRequests).where(eq(expenseRequests.id, submitted.id));
+    const [row] = await db.select().from(expenseRequests).where(eq(expenseRequests.id, id));
     expect(row.status).toBe('approved');
+  });
+
+  it('approval predicate cannot be bypassed by input (>$500 always needs approval)', async () => {
+    const created = await executeAction(analyst, 'template.create', {
+      title: 'Bypass attempt',
+      amountCents: 99_000,
+      employeeEmail: 'b@example.test',
+    });
+    const id = created.status === 'ok' ? (created.data as { id: string }).id : '';
+    await executeAction(analyst, 'template.submit', { id });
+    // Extra/misleading fields in the body are irrelevant — the predicate loads the row.
+    const res = await executeAction(engDev, 'template.approve', { id, amountCents: 1 });
+    expect(res.status).toBe('needs_approval');
   });
 
   it('failing payout leaves the row approved and audits failed:run_error', async () => {
@@ -129,7 +142,7 @@ describe('template app end-to-end', () => {
     });
     const id = created.status === 'ok' ? (created.data as { id: string }).id : '';
     await executeAction(analyst, 'template.submit', { id });
-    await executeAction(engAdmin, 'template.approve', { id, amountCents: 9_999 });
+    await executeAction(engAdmin, 'template.approve', { id });
 
     const payRes = await executeAction(finance, 'template.pay', { id, txnId: 'badtxnF' });
     const requestId = payRes.status === 'needs_approval' ? payRes.requestId : '';

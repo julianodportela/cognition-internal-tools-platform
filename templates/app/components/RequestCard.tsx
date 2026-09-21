@@ -73,7 +73,7 @@ export function RequestCard({ id, status, amountCents, assigneeId, requesterId, 
   }
   if (status === 'submitted') {
     buttons.push(
-      <Button key="approve" onClick={() => ask('template.approve', { id, amountCents }, 'Approve this request?')} disabled={pending}>
+      <Button key="approve" onClick={() => ask('template.approve', { id }, 'Approve this request?')} disabled={pending}>
         Approve
       </Button>,
       <Button key="reject" variant="danger" onClick={() => ask('template.reject', { id }, 'Reject this request?')} disabled={pending}>

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { defineAction } from '@platform/actions/define';
+import { defineAction, type GuardFixtureCtx } from '@platform/actions/define';
 import { dualControl } from '@platform/approvals';
 import { defineStates } from '@platform/workflow';
 import { expenseRequests } from './schema';
@@ -27,21 +27,10 @@ export const createInput = z.object({
 const idInput = z.object({ id: z.string().min(1) });
 
 // Guard fixtures pick a real seeded row so guard tests exercise a real run.
-const rowInStatus = async (db: never, status: string) => {
-  const rows = await (db as {
-    select: () => {
-      from: (t: typeof expenseRequests) => {
-        where: (w: unknown) => { limit: (n: number) => Promise<{ id: string; amountCents: number }[]> };
-      };
-    };
-  })
-    .select()
-    .from(expenseRequests)
-    .where(eq(expenseRequests.status, status))
-    .limit(1);
-  const row = rows[0];
+const byStatus = (status: string) => async ({ firstRow }: GuardFixtureCtx) => {
+  const row = await firstRow(expenseRequests, eq(expenseRequests.status, status));
   if (!row) throw new Error(`No fixture row in status '${status}'`);
-  return row;
+  return { id: String(row.id) };
 };
 
 export const create = defineAction({
@@ -75,7 +64,7 @@ export const submit = defineAction({
   perm: 'template.write',
   risk: 'low',
   input: idInput,
-  guardFixture: async ({ db }) => ({ id: (await rowInStatus(db as never, 'draft')).id }),
+  guardFixture: byStatus('draft'),
   run: async (ctx, i) => {
     const row = await expenseFlow.transition(ctx, expenseRequests, i.id, 'submitted');
     return { id: row.id, status: row.status };
@@ -87,7 +76,7 @@ export const claim = defineAction({
   perm: 'template.write',
   risk: 'low',
   input: idInput,
-  guardFixture: async ({ db }) => ({ id: (await rowInStatus(db as never, 'submitted')).id }),
+  guardFixture: byStatus('submitted'),
   run: async (ctx, i) => {
     const row = await ctx.records.claim(expenseRequests, i.id);
     return { id: row.id, assigneeId: row.assigneeId };
@@ -98,14 +87,17 @@ export const approve = defineAction({
   id: 'template.approve',
   perm: 'template.approve',
   risk: 'high',
-  approval: dualControl((i) => (i as { amountCents?: number }).amountCents! > 50_000),
+  // The approval predicate reads the real row — never the request body —
+  // so a caller cannot smuggle a small amountCents to skip dual control.
+  // Missing row → require approval (fail closed).
+  approval: dualControl(async (i, ctx) => {
+    const row = await ctx.records.get(expenseRequests, (i as { id: string }).id);
+    return !row || Number(row.amountCents) > 50_000;
+  }),
   idempotency: (i) => `approve:${i.id}`,
   rateLimit: { max: 20, windowSeconds: 60 },
-  input: z.object({ id: z.string().min(1), amountCents: z.number().int().positive() }),
-  guardFixture: async ({ db }) => {
-    const row = await rowInStatus(db as never, 'submitted');
-    return { id: row.id, amountCents: row.amountCents };
-  },
+  input: idInput,
+  guardFixture: byStatus('submitted'),
   run: async (ctx, i) => {
     const row = await expenseFlow.transition(ctx, expenseRequests, i.id, 'approved');
     return { id: row.id, status: row.status };
@@ -118,8 +110,10 @@ export const reject = defineAction({
   risk: 'high',
   approval: dualControl(),
   input: z.object({ id: z.string().min(1), reason: z.string().max(1000).optional() }),
-  guardFixture: async ({ db }) => ({
-    id: (await rowInStatus(db as never, 'submitted')).id,
+  guardFixture: async ({ firstRow }) => ({
+    id: String(
+      (await firstRow(expenseRequests, eq(expenseRequests.status, 'submitted')))?.id ?? '',
+    ),
     reason: 'Fixture rejection',
   }),
   run: async (ctx, i) => {
@@ -139,9 +133,10 @@ export const pay = defineAction({
   approval: dualControl(),
   idempotency: (i) => `pay:${i.id}`,
   input: z.object({ id: z.string().min(1), txnId: z.string().min(1) }),
-  guardFixture: async ({ db }) => {
-    const row = await rowInStatus(db as never, 'approved');
-    return { id: row.id, txnId: `txn-${row.id}` };
+  guardFixture: async ({ firstRow }) => {
+    const row = await firstRow(expenseRequests, eq(expenseRequests.status, 'approved'));
+    if (!row) throw new Error("No fixture row in status 'approved'");
+    return { id: String(row.id), txnId: `txn-${row.id}` };
   },
   run: async (ctx, i) => {
     const row = await ctx.records.get(expenseRequests, i.id);
@@ -163,7 +158,7 @@ export const archive = defineAction({
   perm: 'template.write',
   risk: 'low',
   input: idInput,
-  guardFixture: async ({ db }) => ({ id: (await rowInStatus(db as never, 'rejected')).id }),
+  guardFixture: byStatus('rejected'),
   run: async (ctx, i) => {
     await ctx.records.remove(expenseRequests, i.id);
     return { id: i.id, archived: true };
