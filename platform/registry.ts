@@ -61,6 +61,11 @@ export function getApp(id: string): AppManifest | undefined {
   return apps.get(id);
 }
 
+export function getActions(): ActionDef[] {
+  ensureLoaded();
+  return [...actions.values()];
+}
+
 export function getAction(id: string): ActionDef | undefined {
   ensureLoaded();
   return actions.get(id);

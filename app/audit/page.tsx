@@ -7,7 +7,7 @@ import { getDb } from '@platform/data/client';
 import { auditLog } from '@platform/data/schema';
 import { query } from '@platform/data/query';
 import { PageHeader, StatusBadge } from '@platform/ui/primitives';
-import { DataTableClient } from '@platform/ui/data-table';
+import { DataTable } from '@platform/ui/data-table-server';
 import { recentEvents } from '@platform/events';
 
 export default async function AuditPage({
@@ -76,7 +76,7 @@ export default async function AuditPage({
           {recentEvents(15).length === 0 && <li className="text-slate-400">No events yet.</li>}
         </ul>
       </div>
-      <DataTableClient
+      <DataTable
         columns={[
           { key: 'createdAt', label: 'When' },
           { key: 'actorId', label: 'Actor' },

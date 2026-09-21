@@ -46,12 +46,20 @@ export interface ActionDef<I = any, O = any> {
   rateLimit?: { max: number; windowSeconds: number };
   tags?: ('money' | 'external')[];
   appId?: string;
+  /** Skip in the audit-completeness guard test; value is the justification. */
+  guardSkip?: string;
   run(ctx: ActionCtx, input: I): Promise<O>;
 }
 
 export interface ActionOpts<I, O> {
   id: string;
   perm: Permission;
+  /**
+   * Input schemas must carry entity IDs and amounts — never raw PII.
+   * Approval requests persist input_json in approval_requests; the guard
+   * layer fails the build if any field name appears in the global
+   * sensitive-field list (platform/policy/sensitive-fields.ts).
+   */
   input: ZodType<I>;
   risk?: 'high' | 'low';
   approval?: ApprovalPolicy;

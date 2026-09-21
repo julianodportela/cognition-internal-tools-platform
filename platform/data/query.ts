@@ -43,6 +43,17 @@ export interface QueryResult {
   nextCursor: string | null;
 }
 
+/** Non-enumerable marker proving rows passed through the masking query layer. */
+export const MASKED_ROWS = Symbol.for('itp.maskedRows');
+
+export function assertMaskedRows(rows: unknown): void {
+  if (!Array.isArray(rows) || (rows as never)[MASKED_ROWS as never] !== true) {
+    throw new Error(
+      'Rows passed to DataTable did not come through platform query() — masking is not guaranteed. See AGENTS.md §Invariants.',
+    );
+  }
+}
+
 const asCol = (c: unknown) => c as never;
 
 /** Mask sensitive columns of a row. reveal keys are "table.column". */
@@ -124,6 +135,7 @@ export async function query(
   const hasMore = raw.length > limit;
   const page = raw.slice(0, limit);
   const rows = page.map((r) => maskRow(tableName, r, ctx.reveal));
+  Object.defineProperty(rows, MASKED_ROWS, { value: true, enumerable: false });
   const last = page[page.length - 1];
   const nextCursor =
     hasMore && last ? encodeCursor(last[sortKey] ?? last['id'], last['id']) : null;
