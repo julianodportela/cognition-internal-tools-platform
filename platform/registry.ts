@@ -52,10 +52,12 @@ export function registerSchemaTables(schema: Record<string, unknown>) {
 
 registerSchemaTables(platformSchema as unknown as Record<string, unknown>);
 
-for (const a of platformActions) registerActionInternal(a);
+let loaded = false;
 
 function ensureLoaded() {
-  if (apps.size === 0) {
+  if (!loaded) {
+    loaded = true;
+    for (const a of platformActions) registerActionInternal(a);
     for (const m of [...appManifests, templateManifest]) {
       registerApp(m);
     }
