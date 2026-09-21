@@ -40,3 +40,5 @@ export default async function AppDispatch({
     </AppShell>
   );
 }
+
+export const dynamic = 'force-dynamic';

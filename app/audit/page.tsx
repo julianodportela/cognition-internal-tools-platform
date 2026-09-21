@@ -94,3 +94,5 @@ export default async function AuditPage({
     </AppShell>
   );
 }
+
+export const dynamic = 'force-dynamic';
