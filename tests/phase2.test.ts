@@ -4,7 +4,7 @@ import { defineAction } from '@platform/actions/define';
 import { executeAction, decideApproval } from '@platform/actions/mutate';
 import { dualControl, requiresRole } from '@platform/approvals';
 import { defineStates } from '@platform/workflow';
-import { registerAction, registerApp, registerSchemaTableForTests } from '@platform/registry';
+import { registerActionForTests, registerApp, registerSchemaTableForTests } from '@platform/registry';
 import { getDb } from '@platform/data/client';
 import { approvalRequests } from '@platform/data/schema';
 import { eq } from 'drizzle-orm';
@@ -22,7 +22,7 @@ const finance: SeedUser = { id: 'u-f', name: 'Finn', role: 'finance_approver', t
 const issueRefund = defineAction({
   id: 'test.issueRefund',
   perm: 'refunds.issue',
-  input: z.object({ txnId: z.string(), amountCents: z.number().positive() }),
+  input: z.object({ txnId: z.string().max(64), amountCents: z.number().positive() }),
   approval: dualControl((i) => (i as { amountCents: number }).amountCents > 50_000),
   idempotency: (i) => `rf-${i.txnId}`,
   risk: 'high',
@@ -35,7 +35,7 @@ const issueRefund = defineAction({
 const escalate = defineAction({
   id: 'test.escalate',
   perm: 'kyc.decide',
-  input: z.object({ caseId: z.string() }),
+  input: z.object({ caseId: z.string().max(64) }),
   approval: requiresRole('senior_reviewer'),
   run: async (ctx, i) => {
     await ctx.records.update(casesTable, Number(i.caseId), { status: 'escalated' });
@@ -46,7 +46,7 @@ const escalate = defineAction({
 const makeCase = defineAction({
   id: 'test.makeCase',
   perm: 'template.write',
-  input: z.object({ subject: z.string(), ssn: z.string().optional() }),
+  input: z.object({ subject: z.string().max(200), ssn: z.string().max(64).optional() }),
   risk: 'low',
   run: async (ctx, i) => {
     return ctx.records.insert(casesTable, { subject: i.subject, ssn: i.ssn ?? null, ownerId: ctx.user.id, teamId: 'kyc' });
@@ -85,7 +85,7 @@ const wf = defineStates({
 const advance = defineAction({
   id: 'test.advance',
   perm: 'kyc.decide',
-  input: z.object({ id: z.number(), to: z.string() }),
+  input: z.object({ id: z.number(), to: z.string().max(64) }),
   risk: 'low',
   run: async (ctx, i) => wf.transition(ctx, casesTable, i.id, i.to),
 });
@@ -116,7 +116,7 @@ beforeAll(async () => {
   registerApp(testApp);
   registerSchemaTableForTests(casesTable, 'kyc_cases');
   for (const a of [issueRefund, escalate, makeCase, claimCase, removeCase, advance]) {
-    registerAction(a as never);
+    registerActionForTests(a as never);
   }
 });
 

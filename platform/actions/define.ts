@@ -1,7 +1,7 @@
-import type { ZodType } from 'zod';
+import { z, type ZodType } from 'zod';
 import type { SeedUser, Permission } from '@platform/policy/roles';
 import type { DB } from '@platform/data/client';
-import type { QueryOptions, QueryResult, AggregateOptions } from '@platform/data/query';
+import type { QueryOpts, QueryResult, AggregateOptions } from '@platform/data/query';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { Integrations } from '@platform/integrations';
 import type { SQL } from 'drizzle-orm';
@@ -23,6 +23,13 @@ export type ApprovalPolicy =
   | { kind: 'dualControl'; when?: (input: unknown, ctx: ApprovalCtx) => boolean | Promise<boolean> }
   | { kind: 'requiresRole'; role: string; when?: (input: unknown, ctx: ApprovalCtx) => boolean | Promise<boolean> };
 
+/**
+ * The frozen context handed to app action code. It carries NO db property —
+ * rows flow through records/query/audit closures bound to the action's app
+ * (platform-internal actions go through InternalActionCtx instead). Callers
+ * must not be able to add fields: the runtime hands a frozen object whose
+ * own-keys never include 'db'.
+ */
 export interface ActionCtx {
   user: SeedUser;
   /**
@@ -31,7 +38,7 @@ export interface ActionCtx {
    * stamp approval-dependent columns with `ctx.approvedBy ?? null`.
    */
   approvedBy?: string;
-  query(table: PgTable, opts?: QueryOptions): Promise<QueryResult>;
+  query(table: PgTable, opts?: QueryOpts): Promise<QueryResult>;
   aggregate(table: PgTable, opts?: AggregateOptions): Promise<Record<string, unknown>[]>;
   records: RecordsApi;
   integrations: Integrations;
@@ -69,6 +76,11 @@ export interface ActionDef<I = any, O = any> {
   guardSkip?: string;
   /** Guard-test helper: produce a valid input (e.g. referencing a seeded row). */
   guardFixture?: (ctx: GuardFixtureCtx) => I | Promise<I>;
+  /** Platform-internal: run receives an InternalActionCtx with the raw tx. */
+  internal?: boolean;
+  /** Escape hatch for binary payloads (e.g. dataBase64) — fields exempt from
+   *  the 1000-char input cap. Platform-internal use only. */
+  largeInputFields?: string[];
   run(ctx: ActionCtx, input: I): Promise<O>;
 }
 
@@ -90,11 +102,44 @@ export interface ActionOpts<I, O> {
   appId?: string;
   guardSkip?: string;
   guardFixture?: (ctx: GuardFixtureCtx) => I | Promise<I>;
+  /** Platform-internal actions only — never set by app code. */
+  internal?: boolean;
+  largeInputFields?: string[];
   run(ctx: ActionCtx, input: I): Promise<O>;
 }
 
+/**
+ * Every Zod string input field must declare a `.max()` of at most 1000 —
+ * free-text inputs land in approval_requests.input_json and audit rows, and
+ * unbounded strings are a storage/PII-sink risk.
+ */
+function assertStringFieldsBounded(id: string, input: ZodType, exempt: string[] = []): void {
+  if (!(input instanceof z.ZodObject)) return;
+  for (const [name, field] of Object.entries(input.shape)) {
+    if (exempt.includes(name)) continue;
+    const unwrapped = field instanceof z.ZodOptional || field instanceof z.ZodNullable
+      ? (field as z.ZodOptional<ZodType>).unwrap()
+      : field;
+    if (unwrapped instanceof z.ZodString) {
+      const max = unwrapped.maxLength;
+      if (max === null || max > 1000) {
+        throw new Error(
+          `Action ${id}: string input '${name}' must declare .max() <= 1000 (got ${max}). See AGENTS.md §Invariants.`,
+        );
+      }
+    }
+  }
+}
+
 export function defineAction<I, O>(opts: ActionOpts<I, O>): ActionDef<I, O> {
+  assertStringFieldsBounded(opts.id, opts.input, opts.largeInputFields);
   return { risk: 'high', ...opts };
+}
+
+/** Platform-internal variant — run() gets the raw tx on ctx.db. */
+export function defineInternalAction<I, O>(opts: ActionOpts<I, O>): ActionDef<I, O> {
+  assertStringFieldsBounded(opts.id, opts.input, opts.largeInputFields);
+  return { risk: 'high', ...opts, internal: true };
 }
 
 /** Ergonomic fixture context handed to guardFixture — sandbox db only. */

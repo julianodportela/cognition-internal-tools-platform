@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { getDb } from '@platform/data/client';
+import { getPlatformDb } from '@platform/data/internal';
 import { resolveIntegrations } from '@platform/integrations';
 import { executeAction } from '@platform/actions/mutate';
 import { defineAction } from '@platform/actions/define';
-import { registerAction, registerApp } from '@platform/registry';
+import { registerActionForTests, registerApp } from '@platform/registry';
 import { users as usersTable } from '@platform/data/schema';
 import { z } from 'zod';
 import { engAdmin } from '../helpers';
@@ -23,7 +24,7 @@ const senior: SeedUser = { id: 'u-s', name: 'Senior', role: 'senior_reviewer', t
 describe('sandbox/production binding', () => {
   it('sandbox and production are distinct clients', async () => {
     const s = await getDb('sandbox');
-    const p = await getDb('production');
+    const p = await getPlatformDb('production');
     expect(s).not.toBe(p);
   }, 30_000); // first getDb initializes two PGlite instances + migrations + fixtures
 
@@ -51,8 +52,8 @@ describe('sandbox/production binding', () => {
       input: z.object({}),
       run: async (ctx) => ctx.records.insert(usersTable, { id: 'ghost', name: 'G', role: 'analyst', teamId: 'x' }),
     });
-    registerAction(writeUser);
-    const prod = await getDb('production');
+    registerActionForTests(writeUser);
+    const prod = await getPlatformDb('production');
     const before = (await prod.select().from(usersTable)).length;
     const res = await executeAction(engAdmin, 'test.sbWrite', {});
     expect(res.status).toBe('ok');

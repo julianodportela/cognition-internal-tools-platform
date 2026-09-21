@@ -55,7 +55,22 @@ async function seed(db: DB) {
   }
 }
 
-export function getDb(mode: DataMode = 'sandbox'): Promise<DB> {
+// Capability required to open the production connection. Held only by
+// platform/data/internal.ts — app code can never reach it, and the guard
+// layer additionally greps for literal getDb('production') call sites.
+const PROD_CAP: unique symbol = Symbol('itp.prodCapability');
+
+/** Internal use by platform/data/internal.ts only. */
+export function productionCapability(): symbol {
+  return PROD_CAP;
+}
+
+export function getDb(mode: DataMode = 'sandbox', capability?: symbol): Promise<DB> {
+  if (mode === 'production' && capability !== PROD_CAP) {
+    throw new Error(
+      "getDb('production') requires the platform-internal capability; go through platform/data/internal.ts (promotion-checked).",
+    );
+  }
   let p = cache.get(mode);
   if (!p) {
     p = create(mode);

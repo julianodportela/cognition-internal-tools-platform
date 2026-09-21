@@ -40,23 +40,24 @@ export function registerSchemaTables(schema: Record<string, unknown>) {
     if (t && typeof t === 'object' && Symbol.for('drizzle:IsDrizzleTable') in (t as object)) {
       const name = (t as { _: { name?: string } })._?.name
         ?? (t as unknown as Record<symbol, unknown>)[Symbol.for('drizzle:Name')];
-      if (typeof name === 'string') tables.set(name, t as PgTable);
+      if (typeof name === 'string') {
+        if (tables.has(name) && tables.get(name) !== (t as PgTable)) {
+          throw new Error(`registry: duplicate table '${name}'`);
+        }
+        tables.set(name, t as PgTable);
+      }
     }
   }
 }
 
 registerSchemaTables(platformSchema as unknown as Record<string, unknown>);
 
-for (const a of platformActions) actions.set(a.id, a);
+for (const a of platformActions) registerActionInternal(a);
 
 function ensureLoaded() {
   if (apps.size === 0) {
     for (const m of [...appManifests, templateManifest]) {
-      apps.set(m.id, m);
-      registerSchemaTables(m.schema as unknown as Record<string, unknown>);
-      for (const a of m.actions) {
-        actions.set(a.id, { ...a, appId: a.appId ?? m.id });
-      }
+      registerApp(m);
     }
   }
 }
@@ -81,16 +82,28 @@ export function getAction(id: string): ActionDef | undefined {
   return actions.get(id);
 }
 
-/** Register an app manifest (tests may call directly; apps register via apps/index.ts). */
-export function registerApp(m: AppManifest): void {
-  apps.set(m.id, m);
-  registerSchemaTables(m.schema as unknown as Record<string, unknown>);
-  for (const a of m.actions) actions.set(a.id, { ...a, appId: a.appId ?? m.id });
+function registerActionInternal(action: ActionDef): void {
+  if (actions.has(action.id)) {
+    throw new Error(`registry: duplicate action id '${action.id}'`);
+  }
+  actions.set(action.id, action);
 }
 
-/** Register an extra action (tests may call directly). */
-export function registerAction(action: ActionDef): void {
-  actions.set(action.id, action);
+/**
+ * Register an app manifest. Action ids MUST be namespaced '${appId}.' — an
+ * app can never shadow a platform action or another app's action, and
+ * duplicate app ids / table names / action ids throw at registration.
+ */
+export function registerApp(m: AppManifest): void {
+  if (apps.has(m.id)) throw new Error(`registry: duplicate app id '${m.id}'`);
+  apps.set(m.id, m);
+  registerSchemaTables(m.schema as unknown as Record<string, unknown>);
+  for (const a of m.actions) {
+    if (!a.id.startsWith(`${m.id}.`)) {
+      throw new Error(`registry: action '${a.id}' in app '${m.id}' must be namespaced '${m.id}.'`);
+    }
+    registerActionInternal({ ...a, appId: a.appId ?? m.id });
+  }
 }
 
 export function getSchemaTable(name: string): PgTable | undefined {
@@ -105,4 +118,10 @@ export function getSchemaTables(): Map<string, PgTable> {
 
 export function registerSchemaTableForTests(table: PgTable, name: string): void {
   tables.set(name, table);
+}
+
+/** Test-only registration — app code cannot reach it (registry is type-only
+ *  on the app allowlist) and production paths register via registerApp. */
+export function registerActionForTests(action: ActionDef): void {
+  registerActionInternal(action);
 }
