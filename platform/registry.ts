@@ -5,16 +5,18 @@ import { platformActions } from '@platform/actions/platform-actions';
 import { platformSchema } from '@platform/data/schema';
 import { appManifests } from '@apps/index';
 import type { DataMode } from '@platform/data/client';
+import type { Permission } from '@platform/policy/roles';
 
 export interface AppManifest {
   id: string;
   name: string;
   icon: string;
-  permission: string;
+  permission: Permission;
   dataMode: DataMode;
   dataClass: 'internal' | 'sensitive';
   nav?: { label: string; path: string }[];
   sources?: string[];
+  schema: Record<string, PgTable>;
   pages: Record<string, ComponentType<{ subpath: string[] }>>;
   actions: ActionDef[];
 }
@@ -37,33 +39,55 @@ registerSchemaTables(platformSchema as unknown as Record<string, unknown>);
 
 for (const a of platformActions) actions.set(a.id, a);
 
-export function getApps(): AppManifest[] {
-  if (apps.size === 0) {
+function ensureLoaded() {
+  if (apps.size === 0 && appManifests.length > 0) {
     for (const m of appManifests) {
       apps.set(m.id, m);
+      registerSchemaTables(m.schema as unknown as Record<string, unknown>);
       for (const a of m.actions) {
         actions.set(a.id, { ...a, appId: a.appId ?? m.id });
       }
     }
   }
+}
+
+export function getApps(): AppManifest[] {
+  ensureLoaded();
   return [...apps.values()];
 }
 
 export function getApp(id: string): AppManifest | undefined {
-  getApps();
+  ensureLoaded();
   return apps.get(id);
 }
 
 export function getAction(id: string): ActionDef | undefined {
-  getApps();
+  ensureLoaded();
   return actions.get(id);
 }
 
-/** Register an extra action (app manifests do this via getApps; tests may call directly). */
+/** Register an app manifest (tests may call directly; apps register via apps/index.ts). */
+export function registerApp(m: AppManifest): void {
+  apps.set(m.id, m);
+  registerSchemaTables(m.schema as unknown as Record<string, unknown>);
+  for (const a of m.actions) actions.set(a.id, { ...a, appId: a.appId ?? m.id });
+}
+
+/** Register an extra action (tests may call directly). */
 export function registerAction(action: ActionDef): void {
   actions.set(action.id, action);
 }
 
 export function getSchemaTable(name: string): PgTable | undefined {
+  ensureLoaded();
   return tables.get(name);
+}
+
+export function getSchemaTables(): Map<string, PgTable> {
+  ensureLoaded();
+  return tables;
+}
+
+export function registerSchemaTableForTests(table: PgTable, name: string): void {
+  tables.set(name, table);
 }

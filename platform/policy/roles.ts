@@ -1,14 +1,30 @@
 // Org-wide permission and role policy. Versioned in-repo so every change is a reviewed PR.
 
 export const permissions = [
+  // platform
   'pii.reveal',
-  'audit.view',
+  'audit.read',
+  'approvals.manage',
   'admin.manage',
+  // kyc
+  'kyc.read',
+  'kyc.decide',
+  'kyc.decide_high_risk',
+  // refunds
+  'refunds.read',
+  'refunds.issue',
+  'refunds.approve',
+  // flags
+  'flags.read',
+  'flags.toggle',
+  'flags.prod.toggle',
+  // template/example app
+  'template.read',
+  'template.write',
+  'template.approve',
 ] as const;
 
-export type PlatformPermission = (typeof permissions)[number];
-// App manifests contribute their own permission strings; keep the union open.
-export type Permission = PlatformPermission | (string & {});
+export type Permission = (typeof permissions)[number];
 
 export type RoleId =
   | 'analyst'
@@ -27,13 +43,45 @@ export interface RoleDef {
 }
 
 export const roles: Record<RoleId, RoleDef> = {
-  analyst: { permissions: [], scope: 'own' },
-  senior_reviewer: { permissions: ['pii.reveal'], scope: 'team' },
-  compliance_readonly: { permissions: ['audit.view'], scope: 'all' },
-  support_agent: { permissions: [], scope: 'own' },
-  finance_approver: { permissions: ['audit.view'], scope: 'all' },
-  eng_dev: { permissions: ['audit.view', 'pii.reveal'], scope: 'all' },
-  eng_admin: { permissions: ['audit.view', 'pii.reveal', 'admin.manage'], scope: 'all' },
+  analyst: {
+    permissions: ['kyc.read', 'refunds.read', 'flags.read', 'template.read'],
+    scope: 'own',
+  },
+  senior_reviewer: {
+    permissions: ['kyc.read', 'kyc.decide', 'kyc.decide_high_risk', 'pii.reveal', 'template.read', 'template.write'],
+    scope: 'team',
+  },
+  compliance_readonly: {
+    permissions: ['audit.read', 'kyc.read', 'refunds.read'],
+    scope: 'all',
+  },
+  support_agent: {
+    permissions: ['refunds.read', 'flags.read', 'template.read'],
+    scope: 'own',
+  },
+  finance_approver: {
+    permissions: ['refunds.read', 'refunds.issue', 'refunds.approve', 'audit.read'],
+    scope: 'all',
+  },
+  eng_dev: {
+    permissions: [
+      'audit.read', 'pii.reveal',
+      'kyc.read', 'refunds.read', 'refunds.issue',
+      'flags.read', 'flags.toggle',
+      'template.read', 'template.write', 'template.approve',
+    ],
+    scope: 'all',
+  },
+  eng_admin: {
+    permissions: [
+      'audit.read', 'pii.reveal', 'approvals.manage', 'admin.manage',
+      'kyc.read', 'kyc.decide', 'kyc.decide_high_risk',
+      'refunds.read', 'refunds.issue', 'refunds.approve',
+      'flags.read', 'flags.toggle', 'flags.prod.toggle',
+      'template.read', 'template.write', 'template.approve',
+    ],
+    scope: 'all',
+  },
 };
 
 export interface SeedUser {
@@ -52,3 +100,7 @@ export const users: SeedUser[] = [
   { id: 'u-engdev', name: 'Dev Devin', role: 'eng_dev', teamId: 'eng' },
   { id: 'u-engadmin', name: 'Ada Admin', role: 'eng_admin', teamId: 'eng' },
 ];
+
+export function userById(id: string): SeedUser | undefined {
+  return users.find((u) => u.id === id);
+}

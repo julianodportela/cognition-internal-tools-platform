@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, getTableName, gt, lt, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, getTableName, gt, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { SeedUser } from '@platform/policy/roles';
 import { isSensitive, maskValue } from './schema-helpers';
@@ -34,6 +34,8 @@ export interface QueryOptions {
   limit?: number;
   /** Set false to bypass row-scope (platform-internal use only). */
   scope?: boolean;
+  /** Include soft-deleted rows (deleted_at not null). Default: excluded. */
+  includeDeleted?: boolean;
 }
 
 export interface QueryResult {
@@ -90,6 +92,9 @@ export async function query(
 
   const clauses: SQL[] = [];
   if (opts.where) clauses.push(opts.where);
+  if (!opts.includeDeleted && cols['deletedAt']) {
+    clauses.push(isNull(cols['deletedAt']));
+  }
   if (opts.scope !== false) {
     const scoped = scopePredicate(ctx.user, table);
     if (scoped) clauses.push(scoped);
@@ -131,6 +136,7 @@ export interface AggregateOptions {
   sum?: string;
   where?: SQL;
   scope?: boolean;
+  includeDeleted?: boolean;
 }
 
 export async function aggregate(
@@ -154,6 +160,9 @@ export async function aggregate(
 
   const clauses: SQL[] = [];
   if (opts.where) clauses.push(opts.where);
+  if (!opts.includeDeleted && cols['deletedAt']) {
+    clauses.push(isNull(cols['deletedAt']));
+  }
   if (opts.scope !== false) {
     const scoped = scopePredicate(ctx.user, table);
     if (scoped) clauses.push(scoped);

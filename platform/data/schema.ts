@@ -56,4 +56,72 @@ export const rateLimitBuckets = pgTable('rate_limit_buckets', {
   windowStart: timestamp('window_start', { withTimezone: true, mode: 'date' }).notNull(),
 });
 
-export const platformSchema = { users, auditLog, idempotencyKeys, rateLimitBuckets };
+export const approvalRequests = pgTable(
+  'approval_requests',
+  {
+    id: text('id').primaryKey(),
+    actionId: text('action_id').notNull(),
+    appId: text('app_id'),
+    requesterId: text('requester_id').notNull(),
+    inputJson: text('input_json').notNull(),
+    policyJson: text('policy_json').notNull(),
+    idemKey: text('idem_key'),
+    status: text('status').notNull().default('pending'), // pending|approved|rejected|executed|failed
+    approverId: text('approver_id'),
+    reason: text('reason'),
+    decidedAt: timestamp('decided_at', { withTimezone: true, mode: 'date' }),
+    resultJson: text('result_json'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('approval_status_idx').on(t.status),
+    index('approval_requester_idx').on(t.requesterId),
+  ],
+);
+
+export const notes = pgTable(
+  'notes',
+  {
+    id: serial('id').primaryKey(),
+    appId: text('app_id').notNull(),
+    entity: text('entity').notNull(),
+    entityId: text('entity_id').notNull(),
+    authorId: text('author_id').notNull(),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index('notes_entity_idx').on(t.appId, t.entity, t.entityId)],
+);
+
+export const attachments = pgTable(
+  'attachments',
+  {
+    id: serial('id').primaryKey(),
+    appId: text('app_id').notNull(),
+    entity: text('entity').notNull(),
+    entityId: text('entity_id').notNull(),
+    filename: text('filename').notNull(),
+    contentType: text('content_type').notNull(),
+    size: integer('size').notNull(),
+    storageKey: text('storage_key').notNull(),
+    uploadedBy: text('uploaded_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index('attachments_entity_idx').on(t.appId, t.entity, t.entityId)],
+);
+
+export const platformSchema = {
+  users,
+  auditLog,
+  idempotencyKeys,
+  rateLimitBuckets,
+  approvalRequests,
+  notes,
+  attachments,
+};
