@@ -1,77 +1,153 @@
 # Internal Tools Platform
 
-A shared runtime for building internal business apps (KYC queues, refund dashboards,
-feature-flag panels, …) where an AI agent — or an engineer — writes only the app-specific
-parts, and the platform enforces auth, permissions, PII masking, audit, approvals, and
-sandbox/production separation. This is the "buy the runtime, generate the apps"
-alternative to a low-code platform.
+Build internal business apps — KYC queues, refund dashboards, feature-flag panels — from a paragraph of plain English, on a shared runtime that enforces login, permissions, data masking, approvals and audit. An open alternative to low-code platforms like Power Apps.
 
-- **Agents:** start at [`AGENTS.md`](AGENTS.md) and `.agents/skills/`.
-- **Business users:** you describe the app in plain language; you review
-  `apps/<id>/APP_SPEC.md`, not code. New apps run on made-up data until engineering
-  promotes them.
-- **Engineers:** you own `platform/`, `app/`, `.github/`, `promotions/` (CODEOWNERS).
+## Table of contents
 
-## Quick start
+- [Overview](#overview)
+- [Baseplate features](#baseplate-features)
+- [Apps included](#apps-included)
+- [Tech stack](#tech-stack)
+- [Getting started](#getting-started)
+- [Usage](#usage)
+- [Building a new app](#building-a-new-app)
+- [Project structure](#project-structure)
+- [Testing](#testing)
+- [Status and roadmap](#status-and-roadmap)
+- [Contributing](#contributing)
+
+## Overview
+
+The project has two layers:
+
+- **Platform** (`platform/`, `app/`) — owned by engineers. Handles login, roles, masking of private data, second-person approvals, the audit log and the sandbox/production split. It is the only code that touches the database or external services.
+- **Apps** (`apps/<name>/`) — small declarative packages: tables, buttons, who may press them, and screens. Written by an AI agent (or a business user working with one).
+
+## Baseplate features
+
+Shared by every app, so no app has to build them:
+
+- **Login and roles** — who can open what and press what.
+- **Data masking** — private fields are hidden by default; revealing is logged.
+- **Approvals Inbox** — risky actions wait for a second person.
+- **Audit log** — every action is recorded.
+- **No double-doing** — two clicks still mean one refund.
+- **Notes, attachments, claiming** — on any record.
+- **Sandbox first** — apps start on fake data; real data needs engineering approval.
+- **Agent harness** — the rulebook and recipes an AI follows to build apps safely.
+
+Apps can only act through these; they can't reach the database or network on their own, so a badly written app can be wrong but can't leak data or skip a control.
+
+## Apps included
+
+Each app adds only its own tables, buttons and rules on top of the baseplate.
+
+### Refunds Dashboard — `/a/refunds`
+- Support agents refund card payments.
+- Refunds of $100 or more need finance approval.
+- A payment can't be refunded twice.
+
+### KYC Review Queue — `/a/kyc`
+- Analysts claim identity cases (one analyst per case) and approve or reject with a reason.
+- High-risk cases need a senior reviewer's sign-off.
+- Rejected customers can be re-reviewed once; cases go overdue after 48 hours.
+- Compliance can see everything, change nothing.
+
+### Feature-Flag Admin — `/a/flags`
+- Engineers create flags and change staging freely.
+- Production changes need a second engineer; `payments`/`kyc` flags need an admin.
+- Full change history; stale flags listed after 90 days.
+- Flags can be archived, never deleted.
+
+## Tech stack
+
+Next.js (App Router) · TypeScript (strict) · Tailwind CSS · Drizzle ORM · PGlite locally (Postgres dialect) · Zod · Vitest · Playwright · GitHub Actions · pnpm
+
+## Getting started
+
+Prerequisites: Node 20 (`.nvmrc`) and pnpm 10 via Corepack.
 
 ```bash
-nvm use            # Node 20 (.nvmrc)
-corepack enable && corepack prepare pnpm@10.18.0 --activate && pnpm install
-pnpm exec playwright install chromium   # once, for pnpm test:e2e
-pnpm dev           # http://localhost:3000 → /login, pick a dev user
-./scripts/verify   # typecheck + lint + structure/promotion guards + unit & guard tests
-pnpm test:e2e      # Playwright smoke against the dev server
+git clone https://github.com/julianodportela/cognition-internal-tools-platform.git
+cd cognition-internal-tools-platform
+nvm use
+corepack enable && corepack prepare pnpm@10.18.0 --activate
+pnpm install
+pnpm exec playwright install chromium   # only needed for browser tests
+pnpm dev                                 # http://localhost:3000
 ```
 
-Dev users (`/login`): `u-analyst`, `u-senior`, `u-compliance`, `u-support`,
-`u-finance`, `u-engdev`, `u-engadmin`. The example app is at `/a/template`.
+The app runs entirely on local fake data; no external services or credentials are required.
 
-## What the platform provides
+## Usage
 
-| Concern | Primitive | Where |
-|---|---|---|
-| Identity | `IdentityProvider` (dev login-as; OIDC later), signed cookie | `platform/auth` |
-| Permissions & row scope | `Permission` union, roles, `own/team/all` scope | `platform/policy`, `platform/rbac` |
-| Reads | `getReadCtx(appId).query/aggregate` — scoped, masked, keyset-paginated | `platform/data/read.ts`, `query.ts` |
-| PII | `sensitive()` columns, `••••1234` masking, audited `platform.revealField` | `platform/data/schema-helpers.ts` |
-| Writes | `defineAction` → `runAction`: validate, perm, rate-limit, idempotency, approval, transaction, audit | `platform/actions` |
-| Approvals | `dualControl`, `requiresRole`, `/inbox` | `platform/approvals` |
-| Workflow | `defineStates`, `StageBar` | `platform/workflow` |
-| Records | notes, attachments (signed URLs), claim/assign, soft delete | `platform/records` |
-| Events & jobs | notifier ring buffer, `registerJob`, SLA check | `platform/events` |
-| Integrations | payments / kyc / flags / storage interfaces + deterministic mocks | `platform/integrations` |
-| UI | `AppShell`, `DataTable`, `ActionForm`, `Drawer`, `ConfirmDialog`, `Notes`, `FileList`, … | `platform/ui` |
-| Guards | ESLint plugin (8 rules), structure check, promotion gate, audit-completeness & binding tests | `platform/guard`, `tests/guard` |
-| Sandbox → production | separate connections/credentials, `promotions/<id>.yaml` signed by engineering | `platform/data/client.ts`, `platform/guard/check-promotions.ts` |
+1. Open http://localhost:3000/login and pick a user:
 
-## Anatomy of an app
+   | User | Role |
+   |---|---|
+   | `u-analyst` | KYC analyst |
+   | `u-senior` | senior KYC reviewer |
+   | `u-compliance` | compliance (read-only) |
+   | `u-support` | support agent (refunds) |
+   | `u-finance` | finance approver |
+   | `u-engdev` | engineer |
+   | `u-engadmin` | engineering admin |
+
+2. The home page lists the apps your role can open. `/inbox` shows approvals waiting for you; `/audit` shows the log.
+3. Try a flow, for example: as `u-support` issue a $150 refund → as `u-finance` approve it in the Inbox → check `/audit`.
+
+Reset local data at any time with `pnpm db:reset-sandbox`.
+
+## Building a new app
+
+1. Write one paragraph describing the app: the things, who works them, the buttons, what needs a second pair of eyes, what is private.
+2. Give it to the agent in this repo. It follows `.agents/skills/new-app/SKILL.md` and first writes a plain-English spec at `apps/<name>/APP_SPEC.md`, listing open questions where the request conflicts with policy.
+3. Review the spec (not the code) and request changes in plain English.
+4. The agent copies `templates/app`, fills in schema, actions, pages and fixtures, runs all checks and a red-team pass, records timings in `docs/dryrun-<name>.md`, and opens a PR.
+5. Merge the PR: the app appears on the home page on sandbox data.
+6. To use production data, an engineer follows `.agents/skills/promote` and adds `promotions/<name>.yaml` after human sign-off and a passing red-team.
+
+Editing an existing app follows the same loop via `.agents/skills/edit-app`. Roles and permissions are defined in `platform/policy/roles.ts`; changing them is a normal reviewed PR.
+
+## Project structure
 
 ```
-apps/<id>/
-  APP_SPEC.md   plain-language spec the requester confirms
-  manifest.ts   defineApp({ id, permission, dataMode:'sandbox', dataClass, schema, actions, pages })
-  schema.ts     Drizzle tables; sensitive() on PII
-  actions.ts    defineAction(...) per button
-  fixtures.ts   synthetic rows for sandbox
-  pages/*.tsx   server components using @platform/ui
+AGENTS.md            rulebook the agent reads before touching the repo
+.agents/skills/      recipes: new-app, edit-app, redteam, promote, debug
+app/                 Next.js routes: login, home, inbox, audit, /a/<app>
+platform/            the trusted runtime (auth, policy, data, actions, approvals, records, guard, ui)
+apps/                the apps: refunds, kyc, flags
+  <name>/
+    APP_SPEC.md      plain-language spec
+    manifest.ts      defineApp({...})
+    schema.ts        tables; sensitive() on private columns
+    actions.ts       one defineAction per button
+    pages/           screens built from @platform/ui
+    fixtures.ts      synthetic sandbox data
+templates/           canonical example app + APP_SPEC template
+promotions/          engineer-approved sandbox → production bindings
+tests/               unit, security, guard and e2e tests
+docs/                build dry-run timings and friction logs
 ```
 
-`templates/app/` (Expense Requests) is the canonical copy source.
+## Testing
 
-## Safety model in one paragraph
+```bash
+./scripts/verify      # typecheck, lint, structure/promotion guards, unit + security tests
+pnpm test:e2e         # Playwright smoke tests against the dev server
+pnpm guard:redteam    # adversarial guard tests (permissions, masking, approvals, idempotency)
+```
 
-App code can only import an allowlist of platform modules. It cannot open a database,
-run SQL, call HTTP, read env vars, add routes, or define server actions — the lint
-plugin and structure check fail CI otherwise. All reads return masked rows; all writes
-go through one action runner that audits every request and defaults to requiring
-approval. Sensitive column names are enforced globally. New apps bind to a sandbox
-database and mock integrations; binding to production requires a yaml approval file
-that only engineering can add (CODEOWNERS), checked by CI. `tests/guard` executes every
-registered action and proves it audits, and a negative fixture proves every lint rule
-fires.
+CI runs `verify`, secret scanning (gitleaks) and `e2e` against a production build on every pull request.
 
-## Status / not yet
+## Status and roadmap
 
-Dev login-as only (OIDC interface exists), PGlite locally (Postgres dialect; swap
-`DATABASE_URL`), in-memory rate limits and notifier, mock integrations, local file
-storage. Deployment target (container/Vercel) is the client's choice.
+This is a prototype. Login is a development "pick a user" screen (an identity-provider interface exists for SSO), the database is PGlite locally (swap `DATABASE_URL` for Postgres), payment/KYC/flag services are mocks behind interfaces, and no hosting target is chosen.
+
+Before production use: wire SSO, point at a managed Postgres, implement the real integrations behind the existing interfaces, choose hosting, and have security review `platform/` — the trusted layer.
+
+## Contributing
+
+- Engineers own `platform/`, `app/`, `.github/` and `promotions/` (see `CODEOWNERS`).
+- App changes go through the agent skills or a normal PR under `apps/<name>/`; never add `eslint-disable` or weaken a guard — use the platform primitive instead.
+- Run `./scripts/verify` before pushing.
