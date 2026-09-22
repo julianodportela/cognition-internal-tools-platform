@@ -28,7 +28,7 @@ Nothing in this app is personal or financial. No field is sensitive.
   `payments`, `kyc`), staging on/off, staging rollout %, production on/off,
   production rollout %, last changed at, last changed by, archived at, version.
 - **flag change** (history, one row per change): flag, environment, what changed
-  (created / toggled / rollout / archived, before -> after), who did it, who approved
+  (created / toggled / rollout / archived, before → after), who did it, who approved
   it (when approval was needed), when.
 
 ## Screens
