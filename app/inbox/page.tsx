@@ -36,7 +36,7 @@ export default async function InboxPage() {
     .limit(50);
 
   return (
-    <AppShell>
+    <AppShell topbar="Approvals">
       <PageHeader
         title="Approvals"
         description="Risky actions wait here for a second person. You can never approve your own request."

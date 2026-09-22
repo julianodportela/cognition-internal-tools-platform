@@ -131,7 +131,7 @@ export function Tabs({
               active ? 'bg-white text-ink-950 shadow-sm' : 'text-ink-500 hover:text-ink-800'
             }`}
           >
-            {t}
+            {t.replace(/_/g, ' ')}
           </Link>
         );
       })}

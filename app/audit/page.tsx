@@ -19,7 +19,7 @@ export default async function AuditPage({
   if (!user) redirect('/login');
   if (!can(user, 'audit.read')) {
     return (
-      <AppShell>
+      <AppShell topbar="Audit log">
         <PageHeader title="Audit log" />
         <div className="ll-card p-6 text-sm text-ink-500">You don&rsquo;t have permission to view the audit log.</div>
       </AppShell>
@@ -53,7 +53,7 @@ export default async function AuditPage({
   }));
 
   return (
-    <AppShell>
+    <AppShell topbar="Audit log">
       <PageHeader title="Audit log" description="Every action, allowed or denied, across all tools." />
       <form className="mb-4 flex flex-wrap items-center gap-2" method="get">
         <Input name="actor" placeholder="Actor id" defaultValue={sp.actor} className="!w-44" />

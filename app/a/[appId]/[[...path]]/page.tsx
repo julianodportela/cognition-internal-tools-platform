@@ -4,8 +4,7 @@ import { AppShell } from '@platform/ui/app-shell';
 import { getCurrentUser } from '@platform/auth/provider';
 import { can } from '@platform/rbac/rbac';
 import { getApp } from '@platform/registry';
-import { Badge, PageHeader } from '@platform/ui/primitives';
-import { AppIcon } from '@platform/ui/icons';
+import { PageHeader } from '@platform/ui/primitives';
 
 export default async function AppDispatch({
   params,
@@ -36,33 +35,24 @@ export default async function AppDispatch({
   return (
     <AppShell sandbox={app.dataMode === 'sandbox'} topbar={<><span className="text-ink-300">/</span><span className="font-medium text-ink-800">{app.name}</span></>}>
       {nav.length > 1 && (
-        <div className="mb-6 flex items-center justify-between gap-4 border-b border-line">
-          <div className="flex items-center gap-2 pb-3 text-xs text-ink-400">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 text-brand-700">
-              <AppIcon icon={app.icon} label={app.name} size={16} />
-            </span>
-            <span className="font-medium text-ink-700">{app.name}</span>
-            <Badge tone={app.dataMode === 'sandbox' ? 'amber' : 'green'}>{app.dataMode}</Badge>
-          </div>
-          <nav className="-mb-px flex gap-1">
-            {nav.map((n) => {
-              const active = activeNav ? activeNav.path === n.path : n.path === '';
-              return (
-                <Link
-                  key={n.path}
-                  href={`/a/${app.id}${n.path ? `/${n.path}` : ''}`}
-                  className={`border-b-2 px-3 pb-3 text-sm font-medium transition ${
-                    active
-                      ? 'border-brand-500 text-ink-950'
-                      : 'border-transparent text-ink-500 hover:border-ink-200 hover:text-ink-800'
-                  }`}
-                >
-                  {n.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        <nav className="mb-6 flex gap-6 border-b border-line">
+          {nav.map((n) => {
+            const active = activeNav ? activeNav.path === n.path : n.path === '';
+            return (
+              <Link
+                key={n.path}
+                href={`/a/${app.id}${n.path ? `/${n.path}` : ''}`}
+                className={`-mb-px border-b-2 pb-2.5 text-sm font-medium transition ${
+                  active
+                    ? 'border-brand-600 text-ink-950'
+                    : 'border-transparent text-ink-500 hover:text-ink-800'
+                }`}
+              >
+                {n.label}
+              </Link>
+            );
+          })}
+        </nav>
       )}
       <Page
         subpath={path}

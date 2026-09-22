@@ -82,7 +82,7 @@ export function DataTableClient({
     if (key in revealed) return String(revealed[key]);
     if (isMasked && c.sensitive) {
       return (
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 whitespace-nowrap">
           <span className="font-mono text-[13px] tracking-wider text-ink-400">{v}</span>
           <button
             className="ll-link inline-flex items-center gap-1 text-xs"
@@ -95,7 +95,7 @@ export function DataTableClient({
       );
     }
     if (c.format === 'money') return <span className="tabular-nums">${(Number(v) / 100).toFixed(2)}</span>;
-    if (c.format === 'date') return <span className="text-ink-500">{v ? new Date(String(v)).toLocaleDateString() : '—'}</span>;
+    if (c.format === 'date') return <span className="whitespace-nowrap text-ink-500">{v ? new Date(String(v)).toLocaleDateString() : '—'}</span>;
     if (c.format === 'status') return <StatusBadge status={String(v)} />;
     if (c.render) return c.render(v);
     if (v === true || v === 'true') return <Badge tone="green">on</Badge>;
@@ -116,7 +116,7 @@ export function DataTableClient({
           ))}
         </div>
       )}
-      <div className="ll-card overflow-hidden">
+      <div className="ll-card overflow-x-auto">
       <table className="ll-table">
         <thead>
           <tr className="text-left">
@@ -157,8 +157,8 @@ export function DataTableClient({
                     <input type="checkbox" className="accent-brand-600" checked={selected.has(id)} onChange={() => toggle(id)} />
                   </td>
                 )}
-                {columns.map((c) => (
-                  <td key={c.key}>{cell(row, c)}</td>
+                {columns.map((c, ci) => (
+                  <td key={c.key} className={ci === 0 ? 'whitespace-nowrap' : undefined}>{cell(row, c)}</td>
                 ))}
               </tr>
             );

@@ -133,7 +133,11 @@ export async function AppShell({
             <Link href="/" className="text-ink-400 hover:text-ink-800">
               <Icon name="home" size={14} />
             </Link>
-            {topbar}
+            {typeof topbar === 'string' ? (
+              <span className="font-medium text-ink-800">{topbar}</span>
+            ) : (
+              topbar ?? <span className="font-medium text-ink-800">Home</span>
+            )}
           </div>
           {sandbox && (
             <Badge tone="amber">
