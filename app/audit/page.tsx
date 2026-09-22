@@ -45,13 +45,6 @@ export default async function AuditPage({
     },
   );
 
-  const display = rows.map((r) => ({
-    ...r,
-    beforeJson: r.beforeJson ? String(r.beforeJson).slice(0, 80) : '—',
-    afterJson: r.afterJson ? String(r.afterJson).slice(0, 80) : '—',
-    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
-  }));
-
   return (
     <AppShell topbar="Audit log">
       <PageHeader title="Audit log" description="Every action, allowed or denied, across all tools." />
@@ -77,16 +70,16 @@ export default async function AuditPage({
       </Card>
       <DataTable
         columns={[
-          { key: 'createdAt', label: 'When' },
+          { key: 'createdAt', label: 'When', format: 'datetime' },
           { key: 'actorId', label: 'Actor' },
           { key: 'actionId', label: 'Action' },
           { key: 'entity', label: 'Entity' },
           { key: 'entityId', label: 'Entity ID' },
           { key: 'status', label: 'Status', format: 'status' },
-          { key: 'beforeJson', label: 'Before' },
-          { key: 'afterJson', label: 'After' },
+          { key: 'beforeJson', label: 'Before', format: 'truncate' },
+          { key: 'afterJson', label: 'After', format: 'truncate' },
         ]}
-        rows={display}
+        rows={rows}
         nextCursor={nextCursor}
         appId="_platform"
       />

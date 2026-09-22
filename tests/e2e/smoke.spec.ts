@@ -22,6 +22,15 @@ test('template app: eng_admin can reveal a masked field', async ({ page }) => {
   await expect(page.getByText(/@example\.test/).first()).toBeVisible();
 });
 
+test('audit log renders for eng_admin', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByRole('button', { name: /Ada Admin/ }).click();
+  await page.waitForURL('/');
+  await page.goto('/audit');
+  await expect(page.getByRole('heading', { name: 'Audit log' })).toBeVisible();
+  await expect(page.getByText('did not come through platform query')).toHaveCount(0);
+});
+
 test('login as analyst → home renders', async ({ page }) => {
   await page.goto('/login');
   await page.getByRole('button', { name: /Ana Analyst/ }).click();
