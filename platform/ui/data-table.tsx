@@ -10,8 +10,8 @@ export interface ColumnDef {
   key: string;
   label: string;
   sensitive?: boolean;
-  /** Serializable cell formats — safe across the server->client boundary. */
-  format?: 'money' | 'date' | 'status';
+  /** Serializable cell formats -> safe across the server->client boundary. */
+  format?: 'money' | 'date' | 'datetime' | 'status' | 'truncate';
   render?: (v: unknown) => React.ReactNode;
 }
 
@@ -96,6 +96,11 @@ export function DataTableClient({
     }
     if (c.format === 'money') return <span className="tabular-nums">${(Number(v) / 100).toFixed(2)}</span>;
     if (c.format === 'date') return <span className="whitespace-nowrap text-ink-500">{v ? new Date(String(v)).toLocaleDateString() : '—'}</span>;
+    if (c.format === 'datetime') return <span className="whitespace-nowrap text-ink-500">{v ? new Date(String(v)).toLocaleString() : '—'}</span>;
+    if (c.format === 'truncate') {
+      const s = v == null ? '' : String(v);
+      return <span className="font-mono text-xs text-ink-500">{s ? s.slice(0, 80) + (s.length > 80 ? '…' : '') : '—'}</span>;
+    }
     if (c.format === 'status') return <StatusBadge status={String(v)} />;
     if (c.render) return c.render(v);
     if (v === true || v === 'true') return <Badge tone="green">on</Badge>;
