@@ -4,7 +4,7 @@ import { z } from 'zod';
 /**
  * Serializable field descriptors for ActionForm. Server components must build
  * fields on the server (fieldsFromSchema) and pass plain data to the client —
- * a Zod schema object itself cannot cross the server→client boundary.
+ * a Zod schema object itself cannot cross the server->client boundary.
  */
 export interface FieldDef {
   name: string;
@@ -31,7 +31,7 @@ function zodKind(t: z.ZodType): FieldDef['type'] {
   }
 }
 
-// amountCents → 'Amount cents', employeeEmail → 'Employee email'
+// amountCents -> 'Amount cents', employeeEmail -> 'Employee email'
 function humanLabel(name: string): string {
   const words = name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
   return words.charAt(0).toUpperCase() + words.slice(1);

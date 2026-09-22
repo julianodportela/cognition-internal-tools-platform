@@ -1,6 +1,7 @@
 import { users } from '@platform/policy/roles';
 import { loginAs } from '@platform/auth/actions';
 import { Brand, BrandMark } from '@platform/ui/brand';
+import { Icon } from '@platform/ui/icons';
 
 const ROLE_LABEL: Record<string, string> = {
   analyst: 'KYC analyst',
@@ -61,7 +62,7 @@ export default function LoginPage() {
                       <span className="block text-sm font-medium text-ink-950">{u.name}</span>
                       <span className="block text-xs text-ink-500">{ROLE_LABEL[u.role] ?? u.role} · team {u.teamId}</span>
                     </span>
-                    <span className="text-ink-300">→</span>
+                    <span className="text-ink-300"><Icon name="arrow-right" size={16} /></span>
                   </button>
                 </form>
               </li>

@@ -65,8 +65,8 @@ One line per button. Say who may press it and when it needs someone else's sign-
   Who: `pii.reveal` holders (senior_reviewer, engineering). See Open question #3.
 
 ## Stages
-pending → in_review (Claim) → approved | rejected (Approve/Reject by the claimer;
-senior sign-off if high risk) ; rejected → pending (Reopen, once).
+pending -> in_review (Claim) -> approved | rejected (Approve/Reject by the claimer;
+senior sign-off if high risk) ; rejected -> pending (Reopen, once).
 
 ## Overdue rule
 Every case gets a due date 48 hours after it is opened. Cases still open past that

@@ -13,7 +13,7 @@ export const requestInput = z.object({
 
 // Request a refund for a transaction's full amount. Approval is decided from
 // the real transaction row — never the request body — so a caller cannot send
-// a small amount to skip dual control. Missing row → require approval.
+// a small amount to skip dual control. Missing row -> require approval.
 export const request = defineAction({
   id: 'refunds.request',
   perm: 'refunds.issue',

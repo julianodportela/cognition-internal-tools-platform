@@ -1,6 +1,7 @@
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes } from 'react';
 import type { ReactElement } from 'react';
 import Link from 'next/link';
+import { Icon, type IconName } from './icons';
 
 export type Tone = 'slate' | 'green' | 'red' | 'amber' | 'blue' | 'brand';
 
@@ -12,7 +13,7 @@ export function Button(
 ) {
   const { variant = 'primary', size = 'md', className = '', ...rest } = props;
   const styles = {
-    primary: 'bg-brand-600 text-white shadow-sm hover:bg-brand-700 focus-visible:ring-brand-500/40',
+    primary: 'bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow focus-visible:ring-brand-500/40',
     ghost: 'border border-ink-200 bg-white text-ink-800 shadow-sm hover:border-ink-300 hover:bg-ink-50 focus-visible:ring-brand-500/30',
     subtle: 'bg-transparent text-ink-700 hover:bg-ink-100 focus-visible:ring-brand-500/30',
     danger: 'bg-danger-600 text-white shadow-sm hover:bg-danger-700 focus-visible:ring-danger-600/40',
@@ -20,7 +21,7 @@ export function Button(
   const sizes = { sm: 'px-2.5 py-1 text-xs', md: 'px-3.5 py-2 text-sm' }[size];
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${sizes} ${styles} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${sizes} ${styles} ${className}`}
       {...rest}
     />
   );
@@ -44,7 +45,7 @@ export function Badge({ children, tone = 'slate' }: { children: ReactNode; tone?
     brand: 'bg-brand-50 text-brand-700 ring-brand-500/25',
   }[tone];
   return (
-    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${tones}`}>
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-[3px] text-[11px] font-semibold ring-1 ring-inset ${tones}`}>
       {children}
     </span>
   );
@@ -75,7 +76,7 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold text-ink-950">{title}</h1>
+        <h1 className="text-[22px] font-semibold text-ink-950">{title}</h1>
         {description && <p className="mt-1 text-sm text-ink-500">{description}</p>}
       </div>
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
@@ -99,8 +100,8 @@ export function Card({
   return (
     <section className={`ll-card ${className}`}>
       {title && (
-        <header className="flex items-center justify-between gap-2 border-b border-line px-5 py-3">
-          <h2 className="text-sm font-semibold text-ink-800">{title}</h2>
+        <header className="flex items-center justify-between gap-2 border-b border-line px-5 py-3.5">
+          <h2 className="text-[13px] font-semibold tracking-tight text-ink-900">{title}</h2>
           {actions}
         </header>
       )}
@@ -168,16 +169,20 @@ export function Alert({ tone = 'info', children }: { tone?: 'ok' | 'err' | 'info
     info: 'border-info-700/20 bg-info-50 text-info-700',
     warn: 'border-warn-700/20 bg-warn-50 text-warn-800',
   }[tone];
-  return <div className={`rounded-md border px-3 py-2 text-sm ${tones}`}>{children}</div>;
+  const icon = ({ ok: 'check', err: 'x', warn: 'warning', info: 'info' } as Record<'ok' | 'err' | 'warn' | 'info', IconName>)[tone];
+  return (
+    <div className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${tones}`}>
+      <Icon name={icon} size={14} className="mt-0.5" />
+      <div>{children}</div>
+    </div>
+  );
 }
 
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="px-6 py-12 text-center">
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-ink-100 text-ink-400">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M4 7h16M4 12h16M4 17h10" strokeLinecap="round" />
-        </svg>
+        <Icon name="list" size={18} />
       </div>
       <p className="text-sm font-medium text-ink-700">{title}</p>
       {hint && <p className="mt-1 text-xs text-ink-400">{hint}</p>}

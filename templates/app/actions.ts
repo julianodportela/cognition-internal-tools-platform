@@ -89,7 +89,7 @@ export const approve = defineAction({
   risk: 'high',
   // The approval predicate reads the real row — never the request body —
   // so a caller cannot smuggle a small amountCents to skip dual control.
-  // Missing row → require approval (fail closed).
+  // Missing row -> require approval (fail closed).
   approval: dualControl(async (i, ctx) => {
     const row = await ctx.records.get(expenseRequests, (i as { id: string }).id);
     return !row || Number(row.amountCents) > 50_000;

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Alert, Button, Input } from './primitives';
+import { Icon } from './icons';
 import { runAction } from '@platform/actions/run-action';
 import { useRouter } from 'next/navigation';
 
@@ -44,7 +45,7 @@ export function Notes({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500">Notes</h3>
+      <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500"><Icon name="note" size={14} /> Notes</h3>
       <ul className="space-y-2">
         {notes.map((n) => (
           <li key={n.id} className="rounded-md border border-line bg-ink-50/60 px-3 py-2 text-sm">

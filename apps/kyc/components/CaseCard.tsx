@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { runAction } from '@platform/actions/run-action';
 import { Button, Input, Card, Alert, DescriptionList, Field } from '@platform/ui/primitives';
 import { ConfirmDialog } from '@platform/ui/dialogs';
+import { Icon } from '@platform/ui/icons';
 
 interface Props {
   id: string;
@@ -63,7 +64,7 @@ export function CaseCard({
             <span>
               Sent for approval.{' '}
               <Link href="/inbox" className="ll-link">
-                Track it in the Inbox →
+                Track it in the Inbox <Icon name="arrow-right" size={12} />
               </Link>
             </span>
           ),

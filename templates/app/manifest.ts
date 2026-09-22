@@ -8,7 +8,7 @@ import DetailPage from './pages/detail';
 export const templateManifest = defineApp({
   id: 'template',
   name: 'Expense Requests',
-  icon: '🧾',
+  icon: 'receipt',
   description: 'Canonical example app: employees file expenses, managers approve them.',
   permission: 'template.read',
   dataMode: 'sandbox',

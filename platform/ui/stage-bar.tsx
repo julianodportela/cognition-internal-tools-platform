@@ -1,3 +1,5 @@
+import { Icon } from './icons';
+
 export function StageBar({ states, current }: { states: string[]; current: string }) {
   const idx = states.indexOf(current);
   return (
@@ -22,7 +24,7 @@ export function StageBar({ states, current }: { states: string[]; current: strin
                   active ? 'bg-white/20' : done ? 'bg-brand-500 text-white' : 'bg-ink-100'
                 }`}
               >
-                {done ? '✓' : i + 1}
+                {done ? <Icon name="check" size={10} strokeWidth={3} /> : i + 1}
               </span>
               {s.replace(/_/g, ' ')}
             </span>

@@ -11,6 +11,7 @@ import type { Permission } from '@platform/policy/roles';
 export interface AppManifest {
   id: string;
   name: string;
+  /** Icon name from platform/ui/icons.tsx (e.g. 'receipt'); unknown values fall back to a monogram. */
   icon: string;
   /** One-line, plain-language purpose shown on the home page. */
   description?: string;

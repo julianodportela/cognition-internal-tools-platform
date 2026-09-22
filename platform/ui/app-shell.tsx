@@ -7,6 +7,8 @@ import { users } from '@platform/policy/roles';
 import { loginAs, logout } from '@platform/auth/actions';
 import { Brand } from './brand';
 import { NavLink } from './nav-link';
+import { Icon, AppIcon } from './icons';
+import { Badge } from './primitives';
 
 const ROLE_LABEL: Record<string, string> = {
   analyst: 'KYC analyst',
@@ -25,16 +27,18 @@ function initials(name: string) {
 export async function AppShell({
   children,
   sandbox,
+  topbar,
 }: {
   children: ReactNode;
   sandbox?: boolean;
+  topbar?: ReactNode;
 }) {
   const user = await getCurrentUser();
   const apps = user ? getApps().filter((a) => can(user, a.permission)) : [];
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col bg-ink-950 text-ink-200">
+      <aside className="flex w-64 shrink-0 flex-col bg-ink-950 text-ink-200">
         <div className="px-5 pb-4 pt-5">
           <Brand />
         </div>
@@ -48,7 +52,7 @@ export async function AppShell({
               {apps.map((a) => (
                 <li key={a.id}>
                   <NavLink href={`/a/${a.id}`}>
-                    <span className="w-5 text-center text-base leading-none">{a.icon}</span>
+                    <AppIcon icon={a.icon} label={a.name} size={16} />
                     <span className="truncate">{a.name}</span>
                     {a.kind === 'template' && (
                       <span className="ml-auto rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">template</span>
@@ -66,13 +70,13 @@ export async function AppShell({
             <ul className="space-y-0.5">
               <li>
                 <NavLink href="/inbox">
-                  <span className="w-5 text-center text-base leading-none">✓</span>
+                  <Icon name="inbox" size={16} />
                   <span>Approvals</span>
                 </NavLink>
               </li>
               <li>
                 <NavLink href="/audit">
-                  <span className="w-5 text-center text-base leading-none">≡</span>
+                  <Icon name="list" size={16} />
                   <span>Audit log</span>
                 </NavLink>
               </li>
@@ -94,7 +98,9 @@ export async function AppShell({
               </div>
               <div className="mt-3 flex items-center justify-between gap-2 border-t border-ink-800 pt-2.5">
                 <details className="relative">
-                  <summary className="cursor-pointer list-none text-ink-400 hover:text-white">Switch user ▾</summary>
+                  <summary className="flex cursor-pointer list-none items-center gap-1 text-ink-400 hover:text-white">
+                    Switch user <Icon name="chevron-up" size={12} />
+                  </summary>
                   <div className="absolute bottom-full left-0 mb-2 w-48 rounded-lg border border-ink-700 bg-ink-900 p-1 shadow-pop">
                     {users.filter((u) => u.id !== user.id).map((u) => (
                       <form key={u.id} action={loginAs.bind(null, u.id)}>
@@ -107,7 +113,9 @@ export async function AppShell({
                   </div>
                 </details>
                 <form action={logout}>
-                  <button className="text-ink-400 hover:text-white">Sign out</button>
+                  <button className="flex items-center gap-1 text-ink-400 hover:text-white">
+                    <Icon name="logout" size={14} /> Sign out
+                  </button>
                 </form>
               </div>
             </div>
@@ -120,13 +128,23 @@ export async function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {sandbox && (
-          <div className="flex items-center justify-center gap-2 border-b border-warn-200 bg-warn-50 px-4 py-1.5 text-xs font-medium text-warn-800">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-warn-700" />
-            Sandbox — synthetic data, mock integrations. Nothing here touches real customers.
+        <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-line bg-white/80 px-8 backdrop-blur">
+          <div className="flex items-center gap-2 text-sm">
+            <Link href="/" className="text-ink-400 hover:text-ink-800">
+              <Icon name="home" size={14} />
+            </Link>
+            {topbar}
           </div>
-        )}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-8">{children}</main>
+          {sandbox && (
+            <Badge tone="amber">
+              <span title="Synthetic data, mock integrations. Nothing here touches real customers." className="flex items-center gap-1.5">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-warn-700" />
+                Sandbox · synthetic data
+              </span>
+            </Badge>
+          )}
+        </header>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-7">{children}</main>
         <footer className="px-8 py-4 text-[11px] text-ink-400">
           Ledgerline Internal Tools · every action is audited
         </footer>

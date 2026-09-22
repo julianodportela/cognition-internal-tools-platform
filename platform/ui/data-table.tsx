@@ -2,14 +2,15 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { Alert, Button, EmptyState, StatusBadge } from './primitives';
+import { Alert, Badge, Button, EmptyState, StatusBadge } from './primitives';
+import { Icon } from './icons';
 import { runAction } from '@platform/actions/run-action';
 
 export interface ColumnDef {
   key: string;
   label: string;
   sensitive?: boolean;
-  /** Serializable cell formats — safe across the server→client boundary. */
+  /** Serializable cell formats — safe across the server->client boundary. */
   format?: 'money' | 'date' | 'status';
   render?: (v: unknown) => React.ReactNode;
 }
@@ -84,11 +85,11 @@ export function DataTableClient({
         <span className="inline-flex items-center gap-2">
           <span className="font-mono text-[13px] tracking-wider text-ink-400">{v}</span>
           <button
-            className="ll-link text-xs"
+            className="ll-link inline-flex items-center gap-1 text-xs"
             disabled={pending}
             onClick={(e) => { e.stopPropagation(); void reveal(id, c.key); }}
           >
-            Reveal
+            <Icon name="eye" size={12} /> Reveal
           </button>
         </span>
       );
@@ -97,6 +98,8 @@ export function DataTableClient({
     if (c.format === 'date') return <span className="text-ink-500">{v ? new Date(String(v)).toLocaleDateString() : '—'}</span>;
     if (c.format === 'status') return <StatusBadge status={String(v)} />;
     if (c.render) return c.render(v);
+    if (v === true || v === 'true') return <Badge tone="green">on</Badge>;
+    if (v === false || v === 'false') return <Badge tone="slate">off</Badge>;
     return v == null ? '—' : String(v);
   };
 
@@ -127,7 +130,13 @@ export function DataTableClient({
                   onClick={() => goto({ sort: c.key, dir: params.get('dir') === 'asc' ? 'desc' : 'asc', cursor: '' })}
                 >
                   {c.label}
-                  {sorted && <span className="text-brand-600">{params.get('dir') === 'asc' ? '↑' : '↓'}</span>}
+                  {sorted && (
+                    <Icon
+                      name={params.get('dir') === 'asc' ? 'chevron-up' : 'chevron-down'}
+                      size={12}
+                      className="text-brand-600"
+                    />
+                  )}
                 </button>
               </th>
             );})}
@@ -162,7 +171,7 @@ export function DataTableClient({
       </div>
       {nextCursor && (
         <div className="flex justify-end">
-          <Button size="sm" variant="ghost" onClick={() => goto({ cursor: nextCursor })}>Next page →</Button>
+          <Button size="sm" variant="ghost" onClick={() => goto({ cursor: nextCursor })}>Next page <Icon name="arrow-right" size={12} /></Button>
         </div>
       )}
     </div>

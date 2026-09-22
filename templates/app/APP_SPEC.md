@@ -28,12 +28,12 @@ Soft-deleted rows (`deleted_at`) never appear in queries by default.
 
 ## Actions
 - `template.create` — file a draft (any writer).
-- `template.submit` — draft → submitted.
+- `template.submit` — draft -> submitted.
 - `template.claim` — take the request (fails if already assigned).
-- `template.approve` — submitted → approved; **needs dual-control approval when
+- `template.approve` — submitted -> approved; **needs dual-control approval when
   amount > $500**; idempotent on `approve:<id>`; rate-limited 20/min.
-- `template.reject` — submitted → rejected; **always needs dual control**.
-- `template.pay` — approved → paid via payments processor; **always needs dual
+- `template.reject` — submitted -> rejected; **always needs dual control**.
+- `template.pay` — approved -> paid via payments processor; **always needs dual
   control**; idempotent on `pay:<id>`; tagged money+external.
 - `template.archive` — soft delete.
 Notes/attachments use built-in `platform.addNote` / `platform.uploadAttachment`.

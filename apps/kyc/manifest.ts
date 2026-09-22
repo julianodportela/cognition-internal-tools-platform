@@ -8,7 +8,7 @@ import DetailPage from './pages/detail';
 export const kycManifest = defineApp({
   id: 'kyc',
   name: 'KYC Review Queue',
-  icon: '🪪',
+  icon: 'id-card',
   description: 'Claim and decide customer identity cases. High-risk cases need a senior reviewer.',
   permission: 'kyc.read',
   dataMode: 'sandbox',

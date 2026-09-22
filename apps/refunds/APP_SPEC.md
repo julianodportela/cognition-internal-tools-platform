@@ -47,8 +47,8 @@ One line per button. Say who may press it and when it needs someone else's sign-
   refund can never be un-issued, so there is no separate "reject" action.
 
 ## Stages
-- transaction: settled → refunded, or settled → refund_declined (terminal).
-- refund: requested → (approval when ≥ $100) → issued | failed.
+- transaction: settled -> refunded, or settled -> refund_declined (terminal).
+- refund: requested -> (approval when ≥ $100) -> issued | failed.
 
 ## Data mode
 **Sandbox.** All data is made up. Nothing here touches real customers.

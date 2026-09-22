@@ -181,7 +181,7 @@ type CoreOutcome =
 
 /**
  * THE transactional core every money-action goes through — one db.transaction:
- *  (1) claim the idempotency key as in_progress (ON CONFLICT → replay/in_progress)
+ *  (1) claim the idempotency key as in_progress (ON CONFLICT -> replay/in_progress)
  *  (2) consume a rate-limit bucket (durable table)
  *  (3) run the action
  *  (4) write audit rows
@@ -329,7 +329,7 @@ export async function executeAction(
     if (e instanceof RateLimitedError) {
       return fail('rate_limited', `Rate limit exceeded for ${actionId}`);
     }
-    // run_error → generic client message; full error logged keyed by requestId.
+    // run_error -> generic client message; full error logged keyed by requestId.
     log.error(`action ${actionId} failed`, { requestId, error: e instanceof Error ? e.stack : String(e) });
     return fail('run_error', `Action failed (ref ${requestId})`);
   }

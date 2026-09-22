@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { runAction } from '@platform/actions/run-action';
 import { Button, Card, Alert, DescriptionList } from '@platform/ui/primitives';
 import { ConfirmDialog } from '@platform/ui/dialogs';
+import { Icon } from '@platform/ui/icons';
 
 interface Props {
   id: string;
@@ -39,7 +40,7 @@ export function RequestCard({ id, status, amountCents, assigneeId, requesterId, 
             <span>
               Sent for approval.{' '}
               <Link href="/inbox" className="ll-link">
-                Track it in the Inbox →
+                Track it in the Inbox <Icon name="arrow-right" size={12} />
               </Link>
             </span>
           ),

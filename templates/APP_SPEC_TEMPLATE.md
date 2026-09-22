@@ -26,7 +26,7 @@ One line per button. Say who may press it and when it needs someone else's sign-
   (Anything that moves money or contacts an outside system always needs approval.)
 
 ## Stages (if items move through a process)
-draft → submitted → approved → … Who can move it to each stage.
+draft -> submitted -> approved -> … Who can move it to each stage.
 
 ## Data mode
 **Sandbox.** All data is made up. Nothing here touches real customers.

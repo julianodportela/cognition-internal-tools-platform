@@ -145,9 +145,9 @@ function decodeCursor(cursor: string, bind: string): CursorPayload | null {
  * + id tiebreak; rows never skip/dup while data changes underneath.
  *
  * Hard rules (enforced, not conventional):
- *  - orderBy on a sensitive column → throw
- *  - where referencing a sensitive (unrevealed) column → throw
- *  - groupBy/sum on a sensitive column → throw
+ *  - orderBy on a sensitive column -> throw
+ *  - where referencing a sensitive (unrevealed) column -> throw
+ *  - groupBy/sum on a sensitive column -> throw
  *  - cursors are HMAC-signed and bound to table+user+sort — forged/expired/
  *    garbage cursors return {error:'invalid_cursor'}, never raw values.
  */

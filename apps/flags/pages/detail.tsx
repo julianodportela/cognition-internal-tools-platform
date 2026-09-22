@@ -5,6 +5,7 @@ import { Notes, type NoteRow } from '@platform/ui/notes';
 import { PageHeader, Badge, Card, DescriptionList } from '@platform/ui/primitives';
 import { flags, flagChanges } from '../schema';
 import { FlagControls } from '../components/FlagControls';
+import { Icon } from '@platform/ui/icons';
 
 export default async function DetailPage({
   searchParams,
@@ -78,7 +79,7 @@ export default async function DetailPage({
             <li key={String(h.id)} className="flex justify-between gap-4 border-b border-line py-1 last:border-0">
               <span>
                 <span className="font-medium">{String(h.change)}</span> in {String(h.environment)}:{' '}
-                {String(h.before)} → {String(h.after)}
+                {String(h.before)} <Icon name="arrow-right" size={12} className="inline" /> {String(h.after)}
               </span>
               <span className="whitespace-nowrap text-ink-500">
                 {String(h.actorId)}

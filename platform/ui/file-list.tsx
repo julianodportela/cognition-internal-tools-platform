@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { Alert, Button } from './primitives';
+import { Icon } from './icons';
 import { runAction } from '@platform/actions/run-action';
 import { useRouter } from 'next/navigation';
 
@@ -69,7 +70,7 @@ export function FileList({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500">Attachments</h3>
+      <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500"><Icon name="paperclip" size={14} /> Attachments</h3>
       <ul className="space-y-1.5">
         {files.map((f) => (
           <li key={f.id} className="flex items-center justify-between gap-3 rounded-md border border-line bg-ink-50/60 px-3 py-2 text-sm">
@@ -82,8 +83,8 @@ export function FileList({
                 <span className="block text-[11px] text-ink-400">{Math.round(f.size / 1024)} KB · {f.uploadedBy}</span>
               </span>
             </span>
-            <button className="ll-link text-xs" onClick={() => open(f.id)} disabled={pending}>
-              Open
+            <button className="ll-link flex items-center gap-1 text-xs" onClick={() => open(f.id)} disabled={pending}>
+              Open <Icon name="arrow-right" size={12} />
             </button>
           </li>
         ))}
@@ -97,7 +98,7 @@ export function FileList({
           accept=".pdf,.png,.jpg,.jpeg"
           className="flex-1 text-sm text-ink-500 file:mr-3 file:rounded-md file:border file:border-ink-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-ink-700 hover:file:bg-ink-50"
         />
-        <Button variant="ghost" onClick={upload} disabled={pending}>Upload</Button>
+        <Button variant="ghost" onClick={upload} disabled={pending}><Icon name="upload" size={12} /> Upload</Button>
       </div>
     </div>
   );

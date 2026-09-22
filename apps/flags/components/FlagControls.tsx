@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { runAction } from '@platform/actions/run-action';
 import { Button, Card, Alert, Field, Input } from '@platform/ui/primitives';
 import { ConfirmDialog } from '@platform/ui/dialogs';
+import { Icon } from '@platform/ui/icons';
 import { isRestricted } from '../actions';
 
 interface Props {
@@ -45,7 +46,7 @@ export function FlagControls(props: Props) {
             <span>
               Submitted for approval ({res.requestId}).{' '}
               <Link href="/inbox" className="ll-link">
-                Track it in the Inbox →
+                Track it in the Inbox <Icon name="arrow-right" size={12} />
               </Link>
             </span>
           ),

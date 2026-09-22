@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { runAction } from '@platform/actions/run-action';
 import { Button, Card, Alert, DescriptionList, Field, Input } from '@platform/ui/primitives';
 import { ConfirmDialog } from '@platform/ui/dialogs';
+import { Icon } from '@platform/ui/icons';
 
 interface RefundRow {
   id: string;
@@ -50,7 +51,7 @@ export function RefundCard(props: Props) {
             <span>
               Sent for approval.{' '}
               <Link href="/inbox" className="ll-link">
-                Track it in the Inbox →
+                Track it in the Inbox <Icon name="arrow-right" size={12} />
               </Link>
             </span>
           ),

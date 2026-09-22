@@ -9,7 +9,7 @@ import DetailPage from './pages/detail';
 export const refundsManifest = defineApp({
   id: 'refunds',
   name: 'Refunds Dashboard',
-  icon: '💸',
+  icon: 'refund',
   description: 'Refund settled card payments. Refunds of $100 or more route to finance for approval.',
   permission: 'refunds.read',
   dataMode: 'sandbox',

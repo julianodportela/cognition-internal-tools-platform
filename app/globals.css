@@ -44,7 +44,7 @@
 
   --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
   --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.25);
-  --radius-card: 0.75rem;
+  --radius-card: 0.875rem;
 }
 
 @layer base {
@@ -73,14 +73,26 @@
   .ll-table {
     @apply w-full border-collapse text-sm;
   }
-  .ll-table thead th {
-    @apply sticky top-0 bg-ink-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-500 first:rounded-tl-card last:rounded-tr-card;
+  .ll-table th {
+    @apply px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-500 bg-ink-50/70 border-b border-line first:rounded-tl-card last:rounded-tr-card;
   }
-  .ll-table tbody td {
-    @apply border-t border-line px-3 py-2.5 align-middle text-ink-900;
+  .ll-table thead th {
+    @apply sticky top-0;
+  }
+  .ll-table td {
+    @apply px-4 py-2.5 border-b border-line align-middle text-ink-900;
+  }
+  .ll-table tbody td:first-child {
+    @apply font-medium text-ink-900;
+  }
+  .ll-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .ll-table tbody tr:hover td {
+    @apply bg-ink-50/60;
   }
   .ll-table tbody tr[data-clickable="true"] {
-    @apply cursor-pointer transition-colors hover:bg-brand-50/60;
+    @apply cursor-pointer;
   }
   .ll-input {
     @apply w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 shadow-[inset_0_1px_1px_rgb(16_24_40/0.04)] transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/25 disabled:bg-ink-50 disabled:text-ink-400;

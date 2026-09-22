@@ -5,6 +5,7 @@ import { getCurrentUser } from '@platform/auth/provider';
 import { can } from '@platform/rbac/rbac';
 import { getApp } from '@platform/registry';
 import { Badge, PageHeader } from '@platform/ui/primitives';
+import { AppIcon } from '@platform/ui/icons';
 
 export default async function AppDispatch({
   params,
@@ -21,7 +22,7 @@ export default async function AppDispatch({
   if (!app) notFound();
   if (!can(user, app.permission)) {
     return (
-      <AppShell sandbox={app.dataMode === 'sandbox'}>
+      <AppShell sandbox={app.dataMode === 'sandbox'} topbar={<><span className="text-ink-300">/</span><span className="font-medium text-ink-800">{app.name}</span></>}>
         <PageHeader title={app.name} />
         <div className="ll-card p-6 text-sm text-ink-500">You don&rsquo;t have permission to use this app.</div>
       </AppShell>
@@ -33,11 +34,13 @@ export default async function AppDispatch({
   const nav = app.nav ?? [];
   const activeNav = nav.find((n) => n.path === subpath || (n.path !== '' && subpath.startsWith(`${n.path}/`)));
   return (
-    <AppShell sandbox={app.dataMode === 'sandbox'}>
+    <AppShell sandbox={app.dataMode === 'sandbox'} topbar={<><span className="text-ink-300">/</span><span className="font-medium text-ink-800">{app.name}</span></>}>
       {nav.length > 1 && (
         <div className="mb-6 flex items-center justify-between gap-4 border-b border-line">
           <div className="flex items-center gap-2 pb-3 text-xs text-ink-400">
-            <span className="text-base leading-none">{app.icon}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+              <AppIcon icon={app.icon} label={app.name} size={16} />
+            </span>
             <span className="font-medium text-ink-700">{app.name}</span>
             <Badge tone={app.dataMode === 'sandbox' ? 'amber' : 'green'}>{app.dataMode}</Badge>
           </div>
