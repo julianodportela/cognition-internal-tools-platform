@@ -9,6 +9,7 @@ export const templateManifest = defineApp({
   id: 'template',
   name: 'Expense Requests',
   icon: '🧾',
+  description: 'Canonical example app: employees file expenses, managers approve them.',
   permission: 'template.read',
   dataMode: 'sandbox',
   dataClass: 'sensitive',

@@ -4,7 +4,7 @@ import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { runAction } from '@platform/actions/run-action';
-import { Button } from '@platform/ui/primitives';
+import { Button, Card, Alert, Field, Input } from '@platform/ui/primitives';
 import { ConfirmDialog } from '@platform/ui/dialogs';
 import { isRestricted } from '../actions';
 
@@ -44,7 +44,7 @@ export function FlagControls(props: Props) {
           node: (
             <span>
               Submitted for approval ({res.requestId}).{' '}
-              <Link href="/inbox" className="underline">
+              <Link href="/inbox" className="ll-link">
                 Track it in the Inbox →
               </Link>
             </span>
@@ -60,26 +60,22 @@ export function FlagControls(props: Props) {
   };
 
   if (props.archived) {
-    return <div className="rounded border p-4 text-sm text-slate-500">Archived — read only</div>;
+    return <Alert tone="info">Archived — read only</Alert>;
   }
   if (!props.canToggle) return null;
 
   const allOff = !props.stagingEnabled && !props.productionEnabled;
 
   return (
-    <div className="rounded border p-4">
+    <Card title="Flag state">
       {banner && (
-        <div
-          className={`mb-3 rounded px-3 py-2 text-sm ${
-            banner.tone === 'ok' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          {banner.node}
+        <div className="mb-3">
+          <Alert tone={banner.tone}>{banner.node}</Alert>
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded border p-3">
-          <h3 className="mb-2 text-sm font-semibold text-slate-700">Staging</h3>
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-ink-700">Staging</h3>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -88,17 +84,18 @@ export function FlagControls(props: Props) {
             />
             Enabled
           </label>
-          <label className="mt-2 block text-sm">
-            Rollout %
-            <input
-              type="number"
-              min={0}
-              max={100}
-              className="mt-1 w-24 rounded border px-2 py-1 text-sm"
-              value={stagingRollout}
-              onChange={(e) => setStagingRollout(Number(e.target.value))}
-            />
-          </label>
+          <div className="mt-2 w-24">
+            <Field label="Rollout %">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                className="tabular-nums"
+                value={stagingRollout}
+                onChange={(e) => setStagingRollout(Number(e.target.value))}
+              />
+            </Field>
+          </div>
           <div className="mt-3">
             <Button
               disabled={pending}
@@ -114,10 +111,10 @@ export function FlagControls(props: Props) {
               Apply to staging
             </Button>
           </div>
-          <p className="mt-2 text-xs text-slate-400">Applies immediately; no approval needed.</p>
+          <p className="mt-2 text-xs text-ink-400">Applies immediately; no approval needed.</p>
         </div>
-        <div className="rounded border p-3">
-          <h3 className="mb-2 text-sm font-semibold text-slate-700">Production</h3>
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-ink-700">Production</h3>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -126,17 +123,18 @@ export function FlagControls(props: Props) {
             />
             Enabled
           </label>
-          <label className="mt-2 block text-sm">
-            Rollout %
-            <input
-              type="number"
-              min={0}
-              max={100}
-              className="mt-1 w-24 rounded border px-2 py-1 text-sm"
-              value={prodRollout}
-              onChange={(e) => setProdRollout(Number(e.target.value))}
-            />
-          </label>
+          <div className="mt-2 w-24">
+            <Field label="Rollout %">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                className="tabular-nums"
+                value={prodRollout}
+                onChange={(e) => setProdRollout(Number(e.target.value))}
+              />
+            </Field>
+          </div>
           <div className="mt-3">
             <Button
               disabled={pending}
@@ -152,7 +150,7 @@ export function FlagControls(props: Props) {
               Request production change
             </Button>
           </div>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-ink-400">
             {restricted
               ? 'Tagged payments/kyc — needs an engineering admin to approve.'
               : 'Needs a second engineer to approve.'}
@@ -168,7 +166,7 @@ export function FlagControls(props: Props) {
           Archive flag
         </Button>
         {!allOff && (
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-ink-400">
             Turn the flag off in staging and production before archiving.
           </p>
         )}
@@ -183,6 +181,6 @@ export function FlagControls(props: Props) {
           run('flags.archive', { id: props.id });
         }}
       />
-    </div>
+    </Card>
   );
 }

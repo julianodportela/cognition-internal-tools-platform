@@ -9,6 +9,7 @@ export const kycManifest = defineApp({
   id: 'kyc',
   name: 'KYC Review Queue',
   icon: '🪪',
+  description: 'Claim and decide customer identity cases. High-risk cases need a senior reviewer.',
   permission: 'kyc.read',
   dataMode: 'sandbox',
   dataClass: 'sensitive',

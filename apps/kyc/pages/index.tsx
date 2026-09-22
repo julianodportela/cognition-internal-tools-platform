@@ -1,8 +1,7 @@
-import Link from 'next/link';
 import { and, eq } from 'drizzle-orm';
 import { getReadCtx, mineClause } from '@platform/data/read';
 import { DataTable } from '@platform/ui/data-table-server';
-import { PageHeader, Badge } from '@platform/ui/primitives';
+import { PageHeader, Badge, Tabs } from '@platform/ui/primitives';
 import { kycReviews } from '../schema';
 
 const TABS = ['all', 'pending', 'in_review', 'approved', 'rejected'];
@@ -42,22 +41,13 @@ export default async function IndexPage({
 
   return (
     <div>
-      <PageHeader title={mine ? 'My cases' : 'KYC queue'}>
+      <PageHeader
+        title={mine ? 'My cases' : 'KYC queue'}
+        description="Claim a case, review the masked details, approve or reject with a reason."
+      >
         {overdueCount > 0 && <Badge tone="red">{overdueCount} overdue on this page</Badge>}
       </PageHeader>
-      <div className="mb-4 flex gap-2 text-sm">
-        {TABS.map((t) => (
-          <Link
-            key={t}
-            href={`?status=${t}`}
-            className={`rounded border px-2 py-1 ${
-              (status ?? 'all') === t ? 'bg-slate-900 text-white' : 'bg-white text-slate-600'
-            }`}
-          >
-            {t}
-          </Link>
-        ))}
-      </div>
+      <Tabs items={TABS} current={status ?? 'all'} hrefFor={(t) => `?status=${t}`} />
       <DataTable
         appId="kyc"
         table="kyc_reviews"

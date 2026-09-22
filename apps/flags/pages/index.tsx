@@ -1,8 +1,7 @@
-import Link from 'next/link';
 import { and, gt, isNull, lt } from 'drizzle-orm';
 import { getReadCtx } from '@platform/data/read';
 import { DataTable } from '@platform/ui/data-table-server';
-import { PageHeader } from '@platform/ui/primitives';
+import { PageHeader, Tabs, Alert, Card } from '@platform/ui/primitives';
 import { ActionForm } from '@platform/ui/form';
 import { fieldsFromSchema } from '@platform/ui/fields';
 import { flags } from '../schema';
@@ -53,21 +52,12 @@ export default async function IndexPage({
 
   return (
     <div>
-      <PageHeader title="Feature flags" />
-      {queryError && <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">{queryError}</div>}
-      <div className="mb-4 flex gap-2 text-sm">
-        {TABS.map((t) => (
-          <Link
-            key={t}
-            href={`?status=${t}`}
-            className={`rounded border px-2 py-1 ${
-              (status ?? 'all') === t ? 'bg-slate-900 text-white' : 'bg-white text-slate-600'
-            }`}
-          >
-            {t}
-          </Link>
-        ))}
-      </div>
+      <PageHeader
+        title="Feature flags"
+        description="Toggle rollouts per environment — production changes need a second engineer."
+      />
+      {queryError && <div className="mb-3"><Alert tone="warn">{queryError}</Alert></div>}
+      <Tabs items={TABS} current={status ?? 'all'} hrefFor={(t) => `?status=${t}`} />
       <DataTable
         appId="flags"
         table="flags"
@@ -86,8 +76,8 @@ export default async function IndexPage({
         ]}
         rows={rows}
       />
-      <div className="mt-8 max-w-md rounded border p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700">New flag</h2>
+      <div className="mt-8 max-w-md">
+        <Card title="New flag">
         <ActionForm
           actionId="flags.create"
           fields={fieldsFromSchema(createInput, {
@@ -98,6 +88,7 @@ export default async function IndexPage({
           })}
           submitLabel="Create flag"
         />
+        </Card>
       </div>
     </div>
   );

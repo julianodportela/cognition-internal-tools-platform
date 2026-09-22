@@ -1,8 +1,7 @@
-import Link from 'next/link';
 import { eq } from 'drizzle-orm';
 import { getReadCtx } from '@platform/data/read';
 import { DataTable } from '@platform/ui/data-table-server';
-import { PageHeader } from '@platform/ui/primitives';
+import { PageHeader, Tabs, Alert } from '@platform/ui/primitives';
 import { transactions } from '../schema';
 
 const TABS = ['all', 'settled', 'refunded', 'refund_declined'];
@@ -40,21 +39,12 @@ export default async function IndexPage({
 
   return (
     <div>
-      <PageHeader title="Transactions" />
-      {queryError && <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">{queryError}</div>}
-      <div className="mb-4 flex gap-2 text-sm">
-        {TABS.map((t) => (
-          <Link
-            key={t}
-            href={`?status=${t}`}
-            className={`rounded border px-2 py-1 ${
-              (status ?? 'all') === t ? 'bg-slate-900 text-white' : 'bg-white text-slate-600'
-            }`}
-          >
-            {t}
-          </Link>
-        ))}
-      </div>
+      <PageHeader
+        title="Transactions"
+        description="Look up a customer's recent card transactions and request a refund."
+      />
+      {queryError && <div className="mb-3"><Alert tone="warn">{queryError}</Alert></div>}
+      <Tabs items={TABS} current={status ?? 'all'} hrefFor={(t) => `?status=${t}`} />
       <DataTable
         appId="refunds"
         table="transactions"

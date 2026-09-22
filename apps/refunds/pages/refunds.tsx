@@ -1,8 +1,7 @@
-import Link from 'next/link';
 import { eq } from 'drizzle-orm';
 import { getReadCtx } from '@platform/data/read';
 import { DataTable } from '@platform/ui/data-table-server';
-import { PageHeader } from '@platform/ui/primitives';
+import { PageHeader, Tabs, Alert } from '@platform/ui/primitives';
 import { refunds } from '../schema';
 
 const TABS = ['all', 'issued', 'pending', 'failed'];
@@ -40,21 +39,12 @@ export default async function RefundsPage({
 
   return (
     <div>
-      <PageHeader title="All refunds" />
-      <div className="mb-4 flex gap-2 text-sm">
-        {TABS.map((t) => (
-          <Link
-            key={t}
-            href={`?status=${t}&sort=${sortCol}&dir=${sortDir}`}
-            className={`rounded border px-2 py-1 ${
-              (status ?? 'all') === t ? 'bg-slate-900 text-white' : 'bg-white text-slate-600'
-            }`}
-          >
-            {t}
-          </Link>
-        ))}
-      </div>
-      {queryError && <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">{queryError}</div>}
+      <PageHeader
+        title="All refunds"
+        description="Every refund ever requested — who asked, who approved, and the outcome."
+      />
+      <Tabs items={TABS} current={status ?? 'all'} hrefFor={(t) => `?status=${t}&sort=${sortCol}&dir=${sortDir}`} />
+      {queryError && <div className="mb-3"><Alert tone="warn">{queryError}</Alert></div>}
       <DataTable
         appId="refunds"
         table="refunds"

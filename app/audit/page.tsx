@@ -6,7 +6,7 @@ import { can } from '@platform/rbac/rbac';
 import { getDb } from '@platform/data/client';
 import { auditLog } from '@platform/data/schema';
 import { query } from '@platform/data/query';
-import { PageHeader } from '@platform/ui/primitives';
+import { Button, Card, Input, PageHeader } from '@platform/ui/primitives';
 import { DataTable } from '@platform/ui/data-table-server';
 import { recentEvents } from '@platform/events';
 
@@ -21,7 +21,7 @@ export default async function AuditPage({
     return (
       <AppShell>
         <PageHeader title="Audit log" />
-        <p className="text-slate-500">You don&rsquo;t have permission to view the audit log.</p>
+        <div className="ll-card p-6 text-sm text-ink-500">You don&rsquo;t have permission to view the audit log.</div>
       </AppShell>
     );
   }
@@ -54,28 +54,27 @@ export default async function AuditPage({
 
   return (
     <AppShell>
-      <PageHeader title="Audit log" />
-      <form className="mb-4 flex gap-2" method="get">
-        <input name="actor" placeholder="actor id" defaultValue={sp.actor} className="rounded border px-2 py-1 text-sm" />
-        <input name="action" placeholder="action" defaultValue={sp.action} className="rounded border px-2 py-1 text-sm" />
-        <input name="entity" placeholder="entity" defaultValue={sp.entity} className="rounded border px-2 py-1 text-sm" />
-        <button className="rounded bg-slate-900 px-3 py-1 text-sm text-white">Filter</button>
+      <PageHeader title="Audit log" description="Every action, allowed or denied, across all tools." />
+      <form className="mb-4 flex flex-wrap items-center gap-2" method="get">
+        <Input name="actor" placeholder="Actor id" defaultValue={sp.actor} className="!w-44" />
+        <Input name="action" placeholder="Action" defaultValue={sp.action} className="!w-44" />
+        <Input name="entity" placeholder="Entity" defaultValue={sp.entity} className="!w-44" />
+        <Button type="submit" variant="ghost">Filter</Button>
       </form>
-      <div className="mb-6 rounded border bg-slate-50 p-3">
-        <h2 className="mb-2 text-sm font-semibold text-slate-700">Recent events</h2>
-        <ul className="space-y-1 text-xs text-slate-600">
+      <Card title="Recent events" className="mb-6" padded={false}>
+        <ul className="divide-y divide-line text-xs">
           {recentEvents(15).map((e, i) => (
-            <li key={i}>
-              <span className="font-mono">{e.at.toLocaleTimeString()}</span>{' '}
-              <span className="font-medium">{e.type}</span>
-              {e.actionId ? ` · ${e.actionId}` : ''}
-              {e.actorId ? ` · ${e.actorId}` : ''}
-              {e.entityId ? ` · ${e.entityId.slice(0, 8)}` : ''}
+            <li key={i} className="flex items-center gap-3 px-5 py-1.5">
+              <span className="font-mono text-ink-400">{e.at.toLocaleTimeString()}</span>
+              <span className="font-medium text-ink-800">{e.type}</span>
+              <span className="truncate text-ink-500">
+                {[e.actionId, e.actorId, e.entityId?.slice(0, 8)].filter(Boolean).join(' · ')}
+              </span>
             </li>
           ))}
-          {recentEvents(15).length === 0 && <li className="text-slate-400">No events yet.</li>}
+          {recentEvents(15).length === 0 && <li className="px-5 py-3 text-ink-400">No events yet.</li>}
         </ul>
-      </div>
+      </Card>
       <DataTable
         columns={[
           { key: 'createdAt', label: 'When' },

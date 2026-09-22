@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { Button } from './primitives';
+import { Alert, Button } from './primitives';
 import { runAction } from '@platform/actions/run-action';
 import { useRouter } from 'next/navigation';
 
@@ -69,23 +69,34 @@ export function FileList({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-700">Attachments</h3>
-      <ul className="space-y-1">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500">Attachments</h3>
+      <ul className="space-y-1.5">
         {files.map((f) => (
-          <li key={f.id} className="flex items-center justify-between rounded border px-3 py-1.5 text-sm">
-            <span>
-              {f.filename} <span className="text-xs text-slate-400">({Math.round(f.size / 1024)}KB · {f.uploadedBy})</span>
+          <li key={f.id} className="flex items-center justify-between gap-3 rounded-md border border-line bg-ink-50/60 px-3 py-2 text-sm">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-white text-[10px] font-bold uppercase text-ink-500 ring-1 ring-inset ring-line">
+                {f.filename.split('.').pop()?.slice(0, 4)}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-ink-800">{f.filename}</span>
+                <span className="block text-[11px] text-ink-400">{Math.round(f.size / 1024)} KB · {f.uploadedBy}</span>
+              </span>
             </span>
-            <button className="text-blue-600 underline text-xs" onClick={() => open(f.id)} disabled={pending}>
+            <button className="ll-link text-xs" onClick={() => open(f.id)} disabled={pending}>
               Open
             </button>
           </li>
         ))}
-        {files.length === 0 && <li className="text-sm text-slate-400">No files.</li>}
+        {files.length === 0 && <li className="text-sm text-ink-400">No files.</li>}
       </ul>
-      {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <Alert tone="err">{error}</Alert>}
       <div className="flex items-center gap-2">
-        <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg" className="text-sm" />
+        <input
+          ref={input}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg"
+          className="flex-1 text-sm text-ink-500 file:mr-3 file:rounded-md file:border file:border-ink-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-ink-700 hover:file:bg-ink-50"
+        />
         <Button variant="ghost" onClick={upload} disabled={pending}>Upload</Button>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { getReadCtx } from '@platform/data/read';
 import { StageBar } from '@platform/ui/stage-bar';
 import { Notes, type NoteRow } from '@platform/ui/notes';
 import { FileList, type AttachmentRow } from '@platform/ui/file-list';
-import { PageHeader, StatusBadge } from '@platform/ui/primitives';
+import { PageHeader, StatusBadge, Card } from '@platform/ui/primitives';
 import { expenseRequests } from '../schema';
 import { expenseFlow } from '../actions';
 import { RequestCard } from '../components/RequestCard';
@@ -61,12 +61,12 @@ export default async function DetailPage({
         employeeEmail={row.employeeEmail == null ? null : String(row.employeeEmail)}
       />
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded border p-4">
+        <Card>
           <Notes appId="template" entity="expense_requests" entityId={id} notes={notes} />
-        </div>
-        <div className="rounded border p-4">
+        </Card>
+        <Card>
           <FileList appId="template" entity="expense_requests" entityId={id} files={files} />
-        </div>
+        </Card>
       </div>
     </div>
   );

@@ -12,6 +12,8 @@ export interface AppManifest {
   id: string;
   name: string;
   icon: string;
+  /** One-line, plain-language purpose shown on the home page. */
+  description?: string;
   permission: Permission;
   dataMode: DataMode;
   dataClass: 'internal' | 'sensitive';

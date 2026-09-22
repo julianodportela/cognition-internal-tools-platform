@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { Button, StatusBadge } from './primitives';
+import { Alert, Button, EmptyState, StatusBadge } from './primitives';
 import { runAction } from '@platform/actions/run-action';
 
 export interface ColumnDef {
@@ -81,10 +81,10 @@ export function DataTableClient({
     if (key in revealed) return String(revealed[key]);
     if (isMasked && c.sensitive) {
       return (
-        <span className="inline-flex items-center gap-1">
-          <span className="text-slate-400">🔒 {v}</span>
+        <span className="inline-flex items-center gap-2">
+          <span className="font-mono text-[13px] tracking-wider text-ink-400">{v}</span>
           <button
-            className="text-xs text-blue-600 underline"
+            className="ll-link text-xs"
             disabled={pending}
             onClick={(e) => { e.stopPropagation(); void reveal(id, c.key); }}
           >
@@ -93,40 +93,44 @@ export function DataTableClient({
         </span>
       );
     }
-    if (c.format === 'money') return `$${(Number(v) / 100).toFixed(2)}`;
-    if (c.format === 'date') return v ? new Date(String(v)).toLocaleDateString() : '—';
+    if (c.format === 'money') return <span className="tabular-nums">${(Number(v) / 100).toFixed(2)}</span>;
+    if (c.format === 'date') return <span className="text-ink-500">{v ? new Date(String(v)).toLocaleDateString() : '—'}</span>;
     if (c.format === 'status') return <StatusBadge status={String(v)} />;
     if (c.render) return c.render(v);
     return v == null ? '—' : String(v);
   };
 
   return (
-    <div>
-      {error && <div className="mb-2 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+    <div className="space-y-3">
+      {error && <Alert tone="err">{error}</Alert>}
       {bulkActions && selected.size > 0 && (
-        <div className="mb-2 flex items-center gap-2">
-          <span className="text-sm text-slate-600">{selected.size} selected</span>
+        <div className="flex items-center gap-2 rounded-md border border-brand-200 bg-brand-50 px-3 py-2">
+          <span className="text-sm font-medium text-brand-700">{selected.size} selected</span>
           {bulkActions.map((b) => (
-            <Button key={b.actionId} variant="ghost" onClick={() => runBulk(b.actionId)}>
+            <Button key={b.actionId} size="sm" variant="ghost" onClick={() => runBulk(b.actionId)}>
               {b.label}
             </Button>
           ))}
         </div>
       )}
-      <table className="w-full border-collapse text-sm">
+      <div className="ll-card overflow-hidden">
+      <table className="ll-table">
         <thead>
-          <tr className="border-b text-left text-slate-500">
-            {bulkActions && <th className="w-8 p-2" />}
-            {columns.map((c) => (
-              <th key={c.key} className="p-2 font-medium">
+          <tr className="text-left">
+            {bulkActions && <th className="w-8" />}
+            {columns.map((c) => {
+              const sorted = params.get('sort') === c.key;
+              return (
+              <th key={c.key}>
                 <button
-                  className="hover:text-slate-900"
+                  className={`inline-flex items-center gap-1 hover:text-ink-900 ${sorted ? 'text-ink-900' : ''}`}
                   onClick={() => goto({ sort: c.key, dir: params.get('dir') === 'asc' ? 'desc' : 'asc', cursor: '' })}
                 >
                   {c.label}
+                  {sorted && <span className="text-brand-600">{params.get('dir') === 'asc' ? '↑' : '↓'}</span>}
                 </button>
               </th>
-            ))}
+            );})}
           </tr>
         </thead>
         <tbody>
@@ -135,28 +139,30 @@ export function DataTableClient({
             return (
               <tr
                 key={id}
-                className="border-b hover:bg-slate-50"
+                data-clickable={onRowClick ? 'true' : undefined}
+                className={selected.has(id) ? 'bg-brand-50/40' : undefined}
                 onClick={() => onRowClick && router.push(onRowClick.replace('{id}', id))}
               >
                 {bulkActions && (
-                  <td className="p-2" onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" checked={selected.has(id)} onChange={() => toggle(id)} />
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" className="accent-brand-600" checked={selected.has(id)} onChange={() => toggle(id)} />
                   </td>
                 )}
                 {columns.map((c) => (
-                  <td key={c.key} className="p-2">{cell(row, c)}</td>
+                  <td key={c.key}>{cell(row, c)}</td>
                 ))}
               </tr>
             );
           })}
           {rows.length === 0 && (
-            <tr><td className="p-4 text-center text-slate-400" colSpan={columns.length + 1}>No rows</td></tr>
+            <tr><td className="!p-0" colSpan={columns.length + 1}><EmptyState title="Nothing here yet" hint="Rows will appear as records are created." /></td></tr>
           )}
         </tbody>
       </table>
+      </div>
       {nextCursor && (
-        <div className="mt-3">
-          <Button variant="ghost" onClick={() => goto({ cursor: nextCursor })}>Next page →</Button>
+        <div className="flex justify-end">
+          <Button size="sm" variant="ghost" onClick={() => goto({ cursor: nextCursor })}>Next page →</Button>
         </div>
       )}
     </div>

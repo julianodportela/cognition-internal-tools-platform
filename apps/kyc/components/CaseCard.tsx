@@ -4,7 +4,7 @@ import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { runAction } from '@platform/actions/run-action';
-import { Button, Input } from '@platform/ui/primitives';
+import { Button, Input, Card, Alert, DescriptionList, Field } from '@platform/ui/primitives';
 import { ConfirmDialog } from '@platform/ui/dialogs';
 
 interface Props {
@@ -62,7 +62,7 @@ export function CaseCard({
           node: (
             <span>
               Sent for approval.{' '}
-              <Link href="/inbox" className="underline">
+              <Link href="/inbox" className="ll-link">
                 Track it in the Inbox →
               </Link>
             </span>
@@ -121,51 +121,39 @@ export function CaseCard({
   }
 
   return (
-    <div className="rounded border p-4">
+    <Card title="Case details">
       {banner && (
-        <div
-          className={`mb-3 rounded px-3 py-2 text-sm ${
-            banner.tone === 'ok' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          {banner.node}
+        <div className="mb-3">
+          <Alert tone={banner.tone}>{banner.node}</Alert>
         </div>
       )}
-      <dl className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-        <dt className="text-slate-500">Full name</dt>
-        <dd>{fullName ?? '—'}</dd>
-        <dt className="text-slate-500">Date of birth</dt>
-        <dd>{dateOfBirth ?? '—'}</dd>
-        <dt className="text-slate-500">Country</dt>
-        <dd>{country}</dd>
-        <dt className="text-slate-500">Document type</dt>
-        <dd>{idDocumentType}</dd>
-        <dt className="text-slate-500">Document number</dt>
-        <dd>{idDocumentNumber ?? '—'}</dd>
-        <dt className="text-slate-500">Risk score</dt>
-        <dd>{riskScore}</dd>
-        <dt className="text-slate-500">Assignee</dt>
-        <dd>{assigneeId ?? '—'}</dd>
-        <dt className="text-slate-500">Due</dt>
-        <dd>{dueAt ? new Date(dueAt).toLocaleString() : '—'}</dd>
-        <dt className="text-slate-500">Decided by</dt>
-        <dd>{decidedBy ?? '—'}</dd>
-        <dt className="text-slate-500">Decision reason</dt>
-        <dd>{decisionReason ?? '—'}</dd>
-        <dt className="text-slate-500">Resubmissions</dt>
-        <dd>{resubmissionCount}</dd>
-      </dl>
+      <div className="mb-4">
+        <DescriptionList
+          items={[
+            { label: 'Full name', value: fullName ?? '—' },
+            { label: 'Date of birth', value: dateOfBirth ?? '—' },
+            { label: 'Country', value: country },
+            { label: 'Document type', value: idDocumentType },
+            { label: 'Document number', value: idDocumentNumber ?? '—' },
+            { label: 'Risk score', value: riskScore },
+            { label: 'Assignee', value: assigneeId ?? '—' },
+            { label: 'Due', value: dueAt ? new Date(dueAt).toLocaleString() : '—' },
+            { label: 'Decided by', value: decidedBy ?? '—' },
+            { label: 'Decision reason', value: decisionReason ?? '—' },
+            { label: 'Resubmissions', value: resubmissionCount },
+          ]}
+        />
+      </div>
       {status === 'in_review' && assigneeId === currentUserId && (
         <div className="mb-3">
-          <label className="mb-1 block text-xs text-slate-500">
-            Decision reason (required to reject)
-          </label>
-          <Input
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Reason for the decision"
-            maxLength={1000}
-          />
+          <Field label="Decision reason (required to reject)">
+            <Input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Reason for the decision"
+              maxLength={1000}
+            />
+          </Field>
         </div>
       )}
       <div className="flex flex-wrap gap-2">{buttons}</div>
@@ -176,6 +164,6 @@ export function CaseCard({
         onCancel={() => setConfirm(null)}
         onConfirm={() => confirm && run(confirm.actionId, confirm.input)}
       />
-    </div>
+    </Card>
   );
 }
