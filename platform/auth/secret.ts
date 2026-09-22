@@ -1,6 +1,6 @@
 /**
  * The single HMAC secret for session cookies, file tokens, and query cursors.
- * Fails closed in production: no AUTH_SECRET → throw at first use.
+ * Fails closed in production: no AUTH_SECRET -> throw at first use.
  */
 export function authSecret(): string {
   const s = process.env.AUTH_SECRET;

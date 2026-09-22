@@ -1,7 +1,7 @@
 import { and, isNull, lt } from 'drizzle-orm';
 import { getReadCtx } from '@platform/data/read';
 import { DataTable } from '@platform/ui/data-table-server';
-import { PageHeader } from '@platform/ui/primitives';
+import { PageHeader, Alert } from '@platform/ui/primitives';
 import { flags } from '../schema';
 import { staleCutoff } from '../actions';
 
@@ -35,8 +35,11 @@ export default async function StalePage({
 
   return (
     <div>
-      <PageHeader title="Stale flags (no change in 90 days)" />
-      {queryError && <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">{queryError}</div>}
+      <PageHeader
+        title="Stale flags (no change in 90 days)"
+        description="Flags that have not been changed in 90 days — review and archive what is no longer needed."
+      />
+      {queryError && <div className="mb-3"><Alert tone="warn">{queryError}</Alert></div>}
       <DataTable
         appId="flags"
         table="flags"

@@ -10,7 +10,8 @@ import DetailPage from './pages/detail';
 export const flagsManifest = defineApp({
   id: 'flags',
   name: 'Feature Flags',
-  icon: '🚩',
+  icon: 'flag',
+  description: 'Manage feature flags per environment. Production changes need a second engineer.',
   permission: 'flags.read',
   dataMode: 'sandbox',
   dataClass: 'internal',

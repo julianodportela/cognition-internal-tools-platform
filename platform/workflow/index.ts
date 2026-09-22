@@ -61,7 +61,7 @@ export function defineStates(def: WorkflowDef): Workflow {
       if (!row) throw new Error(`row ${id} not found`);
       if (!match(row, to, ctx.user)) {
         throw new Error(
-          `Invalid transition ${row['status'] ?? initial} → ${to} for user ${ctx.user.id}`,
+          `Invalid transition ${row['status'] ?? initial} -> ${to} for user ${ctx.user.id}`,
         );
       }
       return ctx.records.update(table, id, { status: to });

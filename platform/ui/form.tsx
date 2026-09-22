@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Button, Input, Select } from './primitives';
+import { Alert, Button, Field, Input, Select } from './primitives';
 import type { FieldDef } from './fields';
 import { runAction } from '@platform/actions/run-action';
 import type { MutateResult } from '@platform/actions/define';
@@ -53,23 +53,10 @@ export function ActionForm({
   };
 
   return (
-    <form onSubmit={submit} className="space-y-3">
-      {banner && (
-        <div
-          className={`rounded px-3 py-2 text-sm ${
-            banner.tone === 'ok'
-              ? 'bg-green-50 text-green-800'
-              : banner.tone === 'info'
-                ? 'bg-blue-50 text-blue-800'
-                : 'bg-red-50 text-red-700'
-          }`}
-        >
-          {banner.text}
-        </div>
-      )}
+    <form onSubmit={submit} className="space-y-4">
+      {banner && <Alert tone={banner.tone}>{banner.text}</Alert>}
       {defs.map((f) => (
-        <div key={f.name}>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{f.label}</label>
+        <Field key={f.name} label={f.label}>
           {f.type === 'select' ? (
             <Select name={f.name} required={f.required}>
               <option value="">—</option>
@@ -78,7 +65,7 @@ export function ActionForm({
               ))}
             </Select>
           ) : f.type === 'checkbox' ? (
-            <input type="checkbox" name={f.name} className="h-4 w-4" />
+            <input type="checkbox" name={f.name} className="h-4 w-4 accent-brand-600" />
           ) : (
             <Input
               name={f.name}
@@ -87,8 +74,8 @@ export function ActionForm({
               required={f.required}
             />
           )}
-          {errors[f.name] && <p className="mt-1 text-xs text-red-600">{errors[f.name]}</p>}
-        </div>
+          {errors[f.name] && <p className="mt-1 text-xs text-danger-600">{errors[f.name]}</p>}
+        </Field>
       ))}
       <Button type="submit" disabled={pending}>{pending ? 'Working…' : submitLabel}</Button>
     </form>

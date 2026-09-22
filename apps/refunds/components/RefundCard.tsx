@@ -4,8 +4,9 @@ import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { runAction } from '@platform/actions/run-action';
-import { Button } from '@platform/ui/primitives';
+import { Button, Card, Alert, DescriptionList, Field, Input } from '@platform/ui/primitives';
 import { ConfirmDialog } from '@platform/ui/dialogs';
+import { Icon } from '@platform/ui/icons';
 
 interface RefundRow {
   id: string;
@@ -49,8 +50,8 @@ export function RefundCard(props: Props) {
           node: (
             <span>
               Sent for approval.{' '}
-              <Link href="/inbox" className="underline">
-                Track it in the Inbox →
+              <Link href="/inbox" className="ll-link">
+                Track it in the Inbox <Icon name="arrow-right" size={12} />
               </Link>
             </span>
           ),
@@ -67,37 +68,33 @@ export function RefundCard(props: Props) {
   const canRequest = props.status === 'settled';
 
   return (
-    <div className="rounded border p-4">
+    <Card title="Refund">
       {banner && (
-        <div
-          className={`mb-3 rounded px-3 py-2 text-sm ${
-            banner.tone === 'ok' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          {banner.node}
+        <div className="mb-3">
+          <Alert tone={banner.tone}>{banner.node}</Alert>
         </div>
       )}
-      <dl className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-        <dt className="text-slate-500">Amount</dt>
-        <dd>${(props.amountCents / 100).toFixed(2)}</dd>
-        <dt className="text-slate-500">Customer email</dt>
-        <dd>{props.customerEmail ?? '—'}</dd>
-        <dt className="text-slate-500">Card</dt>
-        <dd>{props.cardLast4 ?? '—'}</dd>
-        <dt className="text-slate-500">Occurred</dt>
-        <dd>{props.occurredAt.slice(0, 10)}</dd>
-      </dl>
+      <div className="mb-4">
+        <DescriptionList
+          items={[
+            { label: 'Amount', value: <span className="tabular-nums">${(props.amountCents / 100).toFixed(2)}</span> },
+            { label: 'Customer email', value: props.customerEmail ?? '—' },
+            { label: 'Card', value: props.cardLast4 ?? '—' },
+            { label: 'Occurred', value: props.occurredAt.slice(0, 10) },
+          ]}
+        />
+      </div>
 
       {props.refunds.length > 0 && (
         <div className="mb-4">
-          <h3 className="mb-1 text-sm font-semibold text-slate-700">Refund history</h3>
+          <h3 className="mb-1 text-sm font-semibold text-ink-700">Refund history</h3>
           <ul className="space-y-1 text-sm">
             {props.refunds.map((r) => (
-              <li key={r.id} className="flex justify-between border-b py-1">
-                <span>
+              <li key={r.id} className="flex justify-between border-b border-line py-1">
+                <span className="tabular-nums">
                   ${(r.amountCents / 100).toFixed(2)} — {r.reason}
                 </span>
-                <span className="text-slate-500">
+                <span className="text-ink-500">
                   {r.status} · {r.requesterId}
                 </span>
               </li>
@@ -107,13 +104,16 @@ export function RefundCard(props: Props) {
       )}
 
       {canRequest && (
-        <div className="mb-3 flex items-center gap-2">
-          <input
-            className="flex-1 rounded border px-2 py-1 text-sm"
-            placeholder="Refund reason (required)"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
+        <div className="mb-3 flex items-end gap-2">
+          <div className="flex-1">
+            <Field label="Refund reason (required)">
+              <Input
+                placeholder="Why is this customer being refunded?"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </Field>
+          </div>
           <Button
             onClick={() =>
               setConfirm({
@@ -136,6 +136,6 @@ export function RefundCard(props: Props) {
         onCancel={() => setConfirm(null)}
         onConfirm={() => confirm && run(confirm.actionId, confirm.input)}
       />
-    </div>
+    </Card>
   );
 }

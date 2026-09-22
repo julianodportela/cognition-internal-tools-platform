@@ -4,7 +4,7 @@ import { AppShell } from '@platform/ui/app-shell';
 import { getCurrentUser } from '@platform/auth/provider';
 import { getDb } from '@platform/data/client';
 import { approvalRequests } from '@platform/data/schema';
-import { PageHeader, Badge, StatusBadge } from '@platform/ui/primitives';
+import { PageHeader, Badge, StatusBadge, Card, EmptyState, Mono } from '@platform/ui/primitives';
 import { ApprovalButtons } from '@platform/ui/inbox-actions';
 import { getAction } from '@platform/registry';
 import { canDecide } from '@platform/approvals';
@@ -36,56 +36,71 @@ export default async function InboxPage() {
     .limit(50);
 
   return (
-    <AppShell>
-      <PageHeader title="Approval inbox" />
-      <h2 className="mb-2 text-sm font-semibold text-slate-700">Awaiting your decision</h2>
-      <table className="mb-8 w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b text-left text-slate-500">
-            <th className="p-2">Request</th><th className="p-2">Action</th><th className="p-2">Requester</th>
-            <th className="p-2">Input</th><th className="p-2">Policy</th><th className="p-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {actionable.map((r) => (
-            <tr key={r.id} className="border-b">
-              <td className="p-2 font-mono text-xs">{r.id.slice(0, 8)}</td>
-              <td className="p-2">{r.actionId}</td>
-              <td className="p-2">{r.requesterId}</td>
-              <td className="max-w-xs truncate p-2 font-mono text-xs">{r.inputJson}</td>
-              <td className="p-2"><Badge tone="amber">{JSON.parse(r.policyJson).kind}</Badge></td>
-              <td className="p-2"><ApprovalButtons requestId={r.id} /></td>
-            </tr>
-          ))}
-          {actionable.length === 0 && (
-            <tr><td colSpan={6} className="p-4 text-center text-slate-400">Nothing pending for you.</td></tr>
+    <AppShell topbar="Approvals">
+      <PageHeader
+        title="Approvals"
+        description="Risky actions wait here for a second person. You can never approve your own request."
+      />
+      <div className="space-y-8">
+        <Card
+          padded={false}
+          title={
+            <span className="flex items-center gap-2">
+              Awaiting your decision
+              {actionable.length > 0 && <Badge tone="amber">{actionable.length}</Badge>}
+            </span>
+          }
+        >
+          {actionable.length === 0 ? (
+            <EmptyState title="Nothing pending for you" hint="Requests you're eligible to decide will show up here." />
+          ) : (
+            <table className="ll-table">
+              <thead>
+                <tr className="text-left">
+                  <th>Request</th><th>Action</th><th>Requester</th><th>Input</th><th>Policy</th><th className="text-right">Decision</th>
+                </tr>
+              </thead>
+              <tbody>
+                {actionable.map((r) => (
+                  <tr key={r.id}>
+                    <td><Mono>{r.id.slice(0, 8)}</Mono></td>
+                    <td className="font-medium">{r.actionId}</td>
+                    <td className="text-ink-600">{r.requesterId}</td>
+                    <td className="max-w-xs truncate font-mono text-xs text-ink-500">{r.inputJson}</td>
+                    <td><Badge tone="amber">{JSON.parse(r.policyJson).kind}</Badge></td>
+                    <td className="text-right"><ApprovalButtons requestId={r.id} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-        </tbody>
-      </table>
+        </Card>
 
-      <h2 className="mb-2 text-sm font-semibold text-slate-700">My requests</h2>
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b text-left text-slate-500">
-            <th className="p-2">Request</th><th className="p-2">Action</th><th className="p-2">Status</th>
-            <th className="p-2">Approver</th><th className="p-2">When</th>
-          </tr>
-        </thead>
-        <tbody>
-          {mine.map((r) => (
-            <tr key={r.id} className="border-b">
-              <td className="p-2 font-mono text-xs">{r.id.slice(0, 8)}</td>
-              <td className="p-2">{r.actionId}</td>
-              <td className="p-2"><StatusBadge status={r.status} /></td>
-              <td className="p-2">{r.approverId ?? '—'}</td>
-              <td className="p-2 text-xs text-slate-500">{r.createdAt.toLocaleString()}</td>
-            </tr>
-          ))}
-          {mine.length === 0 && (
-            <tr><td colSpan={5} className="p-4 text-center text-slate-400">You have no requests.</td></tr>
+        <Card padded={false} title="My requests">
+          {mine.length === 0 ? (
+            <EmptyState title="You have no requests" hint="Actions that need approval will be tracked here." />
+          ) : (
+            <table className="ll-table">
+              <thead>
+                <tr className="text-left">
+                  <th>Request</th><th>Action</th><th>Status</th><th>Approver</th><th>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mine.map((r) => (
+                  <tr key={r.id}>
+                    <td><Mono>{r.id.slice(0, 8)}</Mono></td>
+                    <td className="font-medium">{r.actionId}</td>
+                    <td><StatusBadge status={r.status} /></td>
+                    <td className="text-ink-600">{r.approverId ?? '—'}</td>
+                    <td className="text-xs text-ink-500">{r.createdAt.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-        </tbody>
-      </table>
+        </Card>
+      </div>
     </AppShell>
   );
 }

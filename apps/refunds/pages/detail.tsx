@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { and, eq } from 'drizzle-orm';
 import { getReadCtx } from '@platform/data/read';
 import { Notes, type NoteRow } from '@platform/ui/notes';
-import { PageHeader, StatusBadge } from '@platform/ui/primitives';
+import { PageHeader, StatusBadge, Card } from '@platform/ui/primitives';
 import { refunds, transactions } from '../schema';
 import { RefundCard } from '../components/RefundCard';
 
@@ -42,7 +42,7 @@ export default async function DetailPage({
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageHeader title={`${row.merchant} — $${(Number(row.amountCents) / 100).toFixed(2)}`}>
+      <PageHeader title={`${row.merchant} — $${(Number(row.amountCents) / 100).toFixed(2)}`} description="Transaction details and refund history.">
         <StatusBadge status={status} />
       </PageHeader>
       <RefundCard
@@ -62,9 +62,9 @@ export default async function DetailPage({
         latestRefundId={latestRefund ? String(latestRefund.id) : null}
         latestRefundStatus={latestRefund ? String(latestRefund.status) : null}
       />
-      <div className="rounded border p-4">
+      <Card>
         <Notes appId="refunds" entity="transactions" entityId={id} notes={notes} />
-      </div>
+      </Card>
     </div>
   );
 }

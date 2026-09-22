@@ -4,7 +4,7 @@ import { getReadCtx } from '@platform/data/read';
 import { StageBar } from '@platform/ui/stage-bar';
 import { Notes, type NoteRow } from '@platform/ui/notes';
 import { FileList, type AttachmentRow } from '@platform/ui/file-list';
-import { PageHeader, StatusBadge, Badge } from '@platform/ui/primitives';
+import { PageHeader, StatusBadge, Badge, Card } from '@platform/ui/primitives';
 import { kycReviews } from '../schema';
 import { kycFlow } from '../actions';
 import { CaseCard } from '../components/CaseCard';
@@ -84,12 +84,12 @@ export default async function DetailPage({
         resubmissionCount={Number(row.resubmissionCount)}
       />
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded border p-4">
+        <Card>
           <Notes appId="kyc" entity="kyc_reviews" entityId={id} notes={notes} />
-        </div>
-        <div className="rounded border p-4">
+        </Card>
+        <Card>
           <FileList appId="kyc" entity="kyc_reviews" entityId={id} files={files} />
-        </div>
+        </Card>
       </div>
     </div>
   );

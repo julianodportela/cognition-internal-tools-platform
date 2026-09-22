@@ -81,7 +81,7 @@ export const claim = defineAction({
 
 const decideApproval = requiresRole('senior_reviewer', async (input, ctx) => {
   const row = await ctx.records.get(kycReviews, (input as { id: string }).id);
-  // Missing row → require approval (fail closed). High-risk cases decided by
+  // Missing row -> require approval (fail closed). High-risk cases decided by
   // anyone who is not a senior reviewer need a senior's sign-off.
   return !row || (row.riskScore === 'high' && ctx.user.role !== 'senior_reviewer');
 });

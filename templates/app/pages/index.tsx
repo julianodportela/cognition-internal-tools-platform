@@ -1,8 +1,7 @@
-import Link from 'next/link';
 import { and, eq } from 'drizzle-orm';
 import { getReadCtx, mineClause } from '@platform/data/read';
 import { DataTable } from '@platform/ui/data-table-server';
-import { PageHeader } from '@platform/ui/primitives';
+import { PageHeader, Tabs, Card } from '@platform/ui/primitives';
 import { ActionForm } from '@platform/ui/form';
 import { fieldsFromSchema } from '@platform/ui/fields';
 import { expenseRequests } from '../schema';
@@ -36,20 +35,11 @@ export default async function IndexPage({
 
   return (
     <div>
-      <PageHeader title={mine ? 'My requests' : 'Expense queue'} />
-      <div className="mb-4 flex gap-2 text-sm">
-        {TABS.map((t) => (
-          <Link
-            key={t}
-            href={`?status=${t}`}
-            className={`rounded border px-2 py-1 ${
-              (status ?? 'all') === t ? 'bg-slate-900 text-white' : 'bg-white text-slate-600'
-            }`}
-          >
-            {t}
-          </Link>
-        ))}
-      </div>
+      <PageHeader
+        title={mine ? 'My requests' : 'Expense queue'}
+        description="Submit an expense request, track it through approval, and pay it out."
+      />
+      <Tabs items={TABS} current={status ?? 'all'} hrefFor={(t) => `?status=${t}`} />
       <DataTable
         appId="template"
         table="expense_requests"
@@ -65,9 +55,10 @@ export default async function IndexPage({
         ]}
         rows={rows}
       />
-      <div className="mt-8 max-w-md rounded border p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700">New expense request</h2>
-        <ActionForm actionId="template.create" fields={fieldsFromSchema(createInput)} submitLabel="Create draft" />
+      <div className="mt-8 max-w-md">
+        <Card title="New expense request">
+          <ActionForm actionId="template.create" fields={fieldsFromSchema(createInput)} submitLabel="Create draft" />
+        </Card>
       </div>
     </div>
   );

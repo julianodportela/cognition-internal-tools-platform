@@ -2,9 +2,10 @@ import { notFound } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { getReadCtx } from '@platform/data/read';
 import { Notes, type NoteRow } from '@platform/ui/notes';
-import { PageHeader, Badge } from '@platform/ui/primitives';
+import { PageHeader, Badge, Card, DescriptionList } from '@platform/ui/primitives';
 import { flags, flagChanges } from '../schema';
 import { FlagControls } from '../components/FlagControls';
+import { Icon } from '@platform/ui/icons';
 
 export default async function DetailPage({
   searchParams,
@@ -44,20 +45,20 @@ export default async function DetailPage({
       <PageHeader title={String(row.key)}>
         <Badge tone={archived ? 'slate' : 'green'}>{archived ? 'archived' : 'active'}</Badge>
       </PageHeader>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-1 rounded border p-4 text-sm">
-        <dt className="text-slate-500">Description</dt>
-        <dd>{String(row.description)}</dd>
-        <dt className="text-slate-500">Owner team</dt>
-        <dd>{String(row.ownerTeam)}</dd>
-        <dt className="text-slate-500">Tags</dt>
-        <dd>{String(row.tags) || '—'}</dd>
-        <dt className="text-slate-500">Last changed</dt>
-        <dd>
-          {new Date(String(row.lastChangedAt)).toLocaleDateString()} by {String(row.lastChangedBy)}
-        </dd>
-        <dt className="text-slate-500">Version</dt>
-        <dd>{String(row.version)}</dd>
-      </dl>
+      <Card title="Flag details">
+        <DescriptionList
+          items={[
+            { label: 'Description', value: String(row.description) },
+            { label: 'Owner team', value: String(row.ownerTeam) },
+            { label: 'Tags', value: String(row.tags) || '—' },
+            {
+              label: 'Last changed',
+              value: `${new Date(String(row.lastChangedAt)).toLocaleDateString()} by ${String(row.lastChangedBy)}`,
+            },
+            { label: 'Version', value: <span className="tabular-nums">{String(row.version)}</span> },
+          ]}
+        />
+      </Card>
 
       <FlagControls
         id={id}
@@ -71,17 +72,16 @@ export default async function DetailPage({
         canToggle
       />
 
-      <div className="rounded border p-4">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">Change history</h3>
-        {history.length === 0 && <p className="text-sm text-slate-400">No changes yet.</p>}
+      <Card title="Change history">
+        {history.length === 0 && <p className="text-sm text-ink-400">No changes yet.</p>}
         <ul className="space-y-1 text-sm">
           {history.map((h) => (
-            <li key={String(h.id)} className="flex justify-between gap-4 border-b py-1 last:border-0">
+            <li key={String(h.id)} className="flex justify-between gap-4 border-b border-line py-1 last:border-0">
               <span>
                 <span className="font-medium">{String(h.change)}</span> in {String(h.environment)}:{' '}
-                {String(h.before)} → {String(h.after)}
+                {String(h.before)} <Icon name="arrow-right" size={12} className="inline" /> {String(h.after)}
               </span>
-              <span className="whitespace-nowrap text-slate-500">
+              <span className="whitespace-nowrap text-ink-500">
                 {String(h.actorId)}
                 {h.approverId ? ` · approved by ${String(h.approverId)}` : ''} ·{' '}
                 {new Date(String(h.createdAt)).toLocaleDateString()}
@@ -89,11 +89,11 @@ export default async function DetailPage({
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
-      <div className="rounded border p-4">
+      <Card>
         <Notes appId="flags" entity="flags" entityId={id} notes={notes} />
-      </div>
+      </Card>
     </div>
   );
 }

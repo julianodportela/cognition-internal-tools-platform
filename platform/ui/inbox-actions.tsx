@@ -22,11 +22,11 @@ export function ApprovalButtons({ requestId }: { requestId: string }) {
 
   return (
     <span className="inline-flex items-center gap-2">
-      {error && <span className="text-xs text-red-600">{error}</span>}
-      <Button variant="ghost" onClick={() => decide('platform.approve')} disabled={pending}>
+      {error && <span className="text-xs text-danger-600">{error}</span>}
+      <Button size="sm" onClick={() => decide('platform.approve')} disabled={pending}>
         Approve
       </Button>
-      <Button variant="danger" onClick={() => decide('platform.reject')} disabled={pending}>
+      <Button size="sm" variant="ghost" className="text-danger-700 hover:border-danger-600/40 hover:bg-danger-50" onClick={() => decide('platform.reject')} disabled={pending}>
         Reject
       </Button>
     </span>

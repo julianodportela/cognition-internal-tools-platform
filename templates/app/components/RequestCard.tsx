@@ -4,8 +4,9 @@ import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { runAction } from '@platform/actions/run-action';
-import { Button } from '@platform/ui/primitives';
+import { Button, Card, Alert, DescriptionList } from '@platform/ui/primitives';
 import { ConfirmDialog } from '@platform/ui/dialogs';
+import { Icon } from '@platform/ui/icons';
 
 interface Props {
   id: string;
@@ -38,8 +39,8 @@ export function RequestCard({ id, status, amountCents, assigneeId, requesterId, 
           node: (
             <span>
               Sent for approval.{' '}
-              <Link href="/inbox" className="underline">
-                Track it in the Inbox →
+              <Link href="/inbox" className="ll-link">
+                Track it in the Inbox <Icon name="arrow-right" size={12} />
               </Link>
             </span>
           ),
@@ -95,26 +96,22 @@ export function RequestCard({ id, status, amountCents, assigneeId, requesterId, 
   );
 
   return (
-    <div className="rounded border p-4">
+    <Card title="Request">
       {banner && (
-        <div
-          className={`mb-3 rounded px-3 py-2 text-sm ${
-            banner.tone === 'ok' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          {banner.node}
+        <div className="mb-3">
+          <Alert tone={banner.tone}>{banner.node}</Alert>
         </div>
       )}
-      <dl className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-        <dt className="text-slate-500">Amount</dt>
-        <dd>${(amountCents / 100).toFixed(2)}</dd>
-        <dt className="text-slate-500">Requester</dt>
-        <dd>{requesterId}</dd>
-        <dt className="text-slate-500">Assignee</dt>
-        <dd>{assigneeId ?? '—'}</dd>
-        <dt className="text-slate-500">Employee email</dt>
-        <dd>{employeeEmail ?? '—'}</dd>
-      </dl>
+      <div className="mb-4">
+        <DescriptionList
+          items={[
+            { label: 'Amount', value: <span className="tabular-nums">${(amountCents / 100).toFixed(2)}</span> },
+            { label: 'Requester', value: requesterId },
+            { label: 'Assignee', value: assigneeId ?? '—' },
+            { label: 'Employee email', value: employeeEmail ?? '—' },
+          ]}
+        />
+      </div>
       <div className="flex flex-wrap gap-2">{buttons}</div>
       <ConfirmDialog
         open={confirm !== null}
@@ -123,6 +120,6 @@ export function RequestCard({ id, status, amountCents, assigneeId, requesterId, 
         onCancel={() => setConfirm(null)}
         onConfirm={() => confirm && run(confirm.actionId, confirm.input, confirm.actionId === 'template.archive')}
       />
-    </div>
+    </Card>
   );
 }

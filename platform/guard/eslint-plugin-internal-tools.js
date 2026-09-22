@@ -312,7 +312,7 @@ const rules = {
       const templateMatch = filename.match(/(^|\/)templates\//);
       const isClient = fileHasUseClient(context);
       const check = (source, n, raw) => {
-        // Relative-ness is judged on the RAW specifier (normalize('./x') → 'x'
+        // Relative-ness is judged on the RAW specifier (normalize('./x') -> 'x'
         // would strip the marker). Traversal is judged on the normalized path:
         // '..' that resolves outside the app/template dir is an escape.
         const isRelative = raw.startsWith('.');
